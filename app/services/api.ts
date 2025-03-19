@@ -7,13 +7,12 @@ import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
 
 // Base URL for the API - this is different depending on platform
-// For real devices and emulators, use ngrok URL
-// For web development, use localhost
 const getBaseUrl = () => {
   if (Platform.OS === 'web') {
+    // For web, use localhost
     return 'http://localhost:8080';
   } else if (Platform.OS === 'android') {
-    // For all Android devices (both emulator and real devices)
+    // For Android devices, use ngrok URL
     return 'https://fff0-102-0-10-158.ngrok-free.app';
   } else {
     // For iOS
@@ -74,7 +73,7 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
-    ...(Platform.OS === 'web' ? { withCredentials: true } : {}),
+    withCredentials: true,  // Always include credentials
   };
 
   if (data) {
