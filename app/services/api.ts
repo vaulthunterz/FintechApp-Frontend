@@ -2,7 +2,7 @@
 // This is a mock implementation that will be replaced with actual API calls
 
 import axios from 'axios';
-import { auth } from '../config/firebaseConfig';
+import { auth, getTokenWithRetry } from '../config/firebaseConfig';
 import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
 
@@ -26,13 +26,7 @@ console.log("Using API base URL:", API_BASE_URL);
 // Helper function to get the token
 const getToken = async () => {
   try {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      console.log('No user is currently signed in');
-      return null;
-    }
-
-    const token = await currentUser.getIdToken(true);
+    const token = await getTokenWithRetry();
     console.log('Successfully retrieved token');
     return token;
   } catch (error) {
@@ -332,38 +326,25 @@ export const getCategoryPrediction = async (description: string) => {
   }
 };
 
-export const getCustomModelPrediction = async (data: any) => {
-  try {
-    console.log("Getting custom prediction for:", data);
-    // Ensure merchant_name is set
-    if (!data.merchant_name) {
-      data.merchant_name = data.description;
-    }
-    const response = await apiRequest('post', '/api/expenses/predict_custom/', data);
-    console.log("Raw custom prediction response:", response);
-    return response;
-  } catch (error) {
-    console.error("Custom prediction API error:", error);
-    throw error;
-  }
+export const getCustomModelPrediction = async (description: string) => {
+  return apiRequest('post', '/api/expenses/predict/custom/', { description });
 };
 
-export const retrainCustomModel = async (options: any = {}) => {
-  console.log("Retraining custom model with options:", options);
-  return apiRequest('post', '/api/expenses/model/retrain/', options);
+export const retrainCustomModel = async () => {
+  return apiRequest('post', '/api/expenses/model/retrain/');
 };
 
 // Chatbot
-export const getChatbotResponse = async (prompt: string) => {
-  return apiRequest('post', '/api/expenses/chatbot/', { prompt });
+export const getChatbotResponse = async (message: string) => {
+  return apiRequest('post', '/api/expenses/chatbot/', { message });
 };
 
-// User Profile
-export const fetchUserProfile = async () => {
+// User Profile (Expenses)
+export const fetchUserGeneralProfile = async () => {
   return apiRequest('get', '/api/expenses/user/profile/');
 };
 
-export const updateUserProfile = async (profileData: any) => {
+export const updateUserGeneralProfile = async (profileData: any) => {
   return apiRequest('put', '/api/expenses/user/profile/', profileData);
 };
 
@@ -373,72 +354,8 @@ export const getModelMetrics = async () => {
 };
 
 // Transaction Statistics
-export const getTransactionStats = async (token: string, period: string = 'all') => {
-  try {
-    // Get transactions first
-    const transactions = await fetchTransactions();
-    
-    // Calculate statistics from transactions
-    let totalExpenses = 0;
-    let totalIncome = 0;
-    const categoryMap = new Map<string, number>();
-    
-    if (Array.isArray(transactions)) {
-      transactions.forEach((transaction: any) => {
-        // Filter by period if needed
-        const transactionDate = new Date(transaction.date || transaction.time_of_transaction);
-        const now = new Date();
-        let includeTransaction = true;
-        
-        if (period === 'month') {
-          includeTransaction = 
-            transactionDate.getMonth() === now.getMonth() && 
-            transactionDate.getFullYear() === now.getFullYear();
-        } else if (period === 'week') {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(now.getDate() - 7);
-          includeTransaction = transactionDate >= oneWeekAgo;
-        } else if (period === 'year') {
-          includeTransaction = transactionDate.getFullYear() === now.getFullYear();
-        }
-        
-        if (includeTransaction) {
-          const amount = parseFloat(transaction.amount);
-          if (transaction.isExpense) {
-            totalExpenses += amount;
-            
-            // Add to category summary
-            const categoryName = transaction.category?.name || transaction.category || 'Uncategorized';
-            const currentAmount = categoryMap.get(categoryName) || 0;
-            categoryMap.set(categoryName, currentAmount + amount);
-          } else {
-            totalIncome += amount;
-          }
-        }
-      });
-    }
-    
-    // Convert category map to array
-    const categorySummary: {category: string, amount: number}[] = [];
-    categoryMap.forEach((amount, category) => {
-      categorySummary.push({ category, amount });
-    });
-    
-    // Sort by amount (highest first)
-    categorySummary.sort((a, b) => b.amount - a.amount);
-    
-    return {
-      data: {
-        totalExpenses,
-        totalIncome,
-        netAmount: totalIncome - totalExpenses,
-        categorySummary,
-      },
-    };
-  } catch (error) {
-    console.error("Error calculating transaction stats:", error);
-    throw error;
-  }
+export const getTransactionStats = async () => {
+  return apiRequest('get', '/api/expenses/transactions/stats/');
 };
 
 // Investment functions
@@ -474,6 +391,40 @@ export const getPortfolioSummary = async () => {
   return apiRequest('get', '/api/investment/portfolio/summary/');
 };
 
+// Investment Profile functions
+export const fetchUserProfiles = async () => {
+  return apiRequest('get', '/api/investment/profiles/');
+};
+
+export const fetchUserProfile = async (profileId: string) => {
+  return apiRequest('get', `/api/investment/profiles/${profileId}/`);
+};
+
+export const createUserProfile = async (profileData: any) => {
+  return apiRequest('post', '/api/investment/profiles/', profileData);
+};
+
+export const updateUserProfile = async (profileId: string, profileData: any) => {
+  return apiRequest('patch', `/api/investment/profiles/${profileId}/`, profileData);
+};
+
+// Investment Questionnaire functions
+export const fetchQuestionnaires = async () => {
+  return apiRequest('get', '/api/investment/questionnaires/');
+};
+
+export const submitQuestionnaire = async (questionnaireData: any) => {
+  return apiRequest('post', '/api/investment/questionnaires/', questionnaireData);
+};
+
+export const checkQuestionnaireStatus = async () => {
+  const response = await apiRequest('get', '/api/investment/questionnaires/');
+  return {
+    isCompleted: response && response.length > 0,
+    data: response,
+  };
+};
+
 // Create an object with all API functions
 const api = {
   fetchTransactions,
@@ -497,8 +448,8 @@ const api = {
   getCustomModelPrediction,
   retrainCustomModel,
   getChatbotResponse,
-  fetchUserProfile,
-  updateUserProfile,
+  fetchUserGeneralProfile,
+  updateUserGeneralProfile,
   getModelMetrics,
   getTransactionStats,
   fetchInvestments,
@@ -508,7 +459,14 @@ const api = {
   deleteInvestment,
   getInvestmentRecommendations,
   getInvestmentPerformance,
-  getPortfolioSummary
+  getPortfolioSummary,
+  fetchUserProfiles,
+  fetchUserProfile,
+  createUserProfile,
+  updateUserProfile,
+  fetchQuestionnaires,
+  submitQuestionnaire,
+  checkQuestionnaireStatus
 };
 
 // Export the API object as default

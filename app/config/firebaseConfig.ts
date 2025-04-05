@@ -56,11 +56,32 @@ const initAnalytics = async () => {
 // Initialize analytics
 initAnalytics();
 
+// Add a function to handle token refresh with clock skew tolerance
+const getTokenWithRetry = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No user is currently signed in');
+      }
+      // Force token refresh and add a small delay to account for clock skew
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = await currentUser.getIdToken(true);
+      return token;
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+};
+
 // Export named exports
-export { auth, analytics };
+export { auth, analytics, getTokenWithRetry };
 
 // Add a default export to satisfy Expo Router
 export default {
   auth,
-  analytics
+  analytics,
+  getTokenWithRetry
 }; 
