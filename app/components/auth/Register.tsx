@@ -25,6 +25,7 @@ interface FormErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  general?: string;
 }
 
 const Register = () => {
@@ -90,7 +91,6 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Register using Firebase (adapted for the Expo app)
       await register(formData.email, formData.password);
       
       Toast.show({
@@ -98,15 +98,27 @@ const Register = () => {
         text1: 'Registration successful!',
         text2: 'Welcome to the app!'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
       
-      // Display error message
+      // Display specific error message for duplicate email
+      const errorMessage = error.message.includes('already registered')
+        ? error.message
+        : 'Please check your information and try again';
+      
       Toast.show({
         type: 'error',
         text1: 'Registration failed',
-        text2: 'Please check your information and try again'
+        text2: errorMessage
       });
+      
+      // Set form-level error if it's a duplicate email
+      if (error.message.includes('already registered')) {
+        setErrors({
+          email: 'This email is already registered',
+          general: 'Please use a different email or try logging in'
+        });
+      }
     } finally {
       setLoading(false);
     }

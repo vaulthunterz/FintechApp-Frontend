@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Platform, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import SettingsDrawer from './SettingsDrawer';
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -16,6 +17,8 @@ const Header: React.FC<HeaderProps> = ({
   isRootScreen = false,
   onMenuPress,
 }) => {
+  const [settingsDrawerVisible, setSettingsDrawerVisible] = useState(false);
+
   const goBack = () => {
     router.back();
   };
@@ -26,15 +29,15 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const navigateToSettings = () => {
-    router.push('/screens/settings');
+  const toggleSettingsDrawer = () => {
+    setSettingsDrawerVisible(!settingsDrawerVisible);
   };
 
   return (
     <View style={styles.header}>
       {isRootScreen ? (
-        <TouchableOpacity 
-          onPress={handleDrawerToggle} 
+        <TouchableOpacity
+          onPress={handleDrawerToggle}
           style={styles.menuButton}
           activeOpacity={0.7}
         >
@@ -45,16 +48,22 @@ const Header: React.FC<HeaderProps> = ({
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
       )}
-      
+
       <Text style={styles.headerText}>FinTech App</Text>
-      
+
       <View style={styles.rightSection}>
         {showSettingsIcon && (
-          <TouchableOpacity onPress={navigateToSettings} style={styles.settingsButton}>
+          <TouchableOpacity onPress={toggleSettingsDrawer} style={styles.settingsButton}>
             <Ionicons name="settings-outline" size={24} color="white" />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Settings Drawer - Moved outside the header view for proper rendering */}
+      <SettingsDrawer
+        isVisible={settingsDrawerVisible}
+        onClose={() => setSettingsDrawerVisible(false)}
+      />
     </View>
   );
 };
@@ -103,4 +112,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Header; 
+export default Header;

@@ -24,6 +24,12 @@ interface AuthContextType {
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  errors: {
+    general?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +49,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<AuthContextType['errors']>({});
 
   useEffect(() => {
     // Listen for auth state changes
@@ -96,10 +103,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (email: string, password: string) => {
     try {
       setLoading(true);
+      setErrors({}); // Clear any previous errors
       await createUserWithEmailAndPassword(auth, email, password);
       router.replace('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Register error:', error);
+      // Check specifically for email-already-in-use error
+      if (error.code === 'auth/email-already-in-use') {
+        setErrors({
+          email: 'This email is already registered',
+          general: 'Please use a different email or try logging in'
+        });
+        throw new Error('This email is already registered. Please use a different email or try logging in.');
+      }
       throw error;
     } finally {
       setLoading(false);
@@ -133,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, errors }}>
       {children}
     </AuthContext.Provider>
   );

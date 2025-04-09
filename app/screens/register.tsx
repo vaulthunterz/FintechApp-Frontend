@@ -21,7 +21,7 @@ const RegisterScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register, loading } = useAuth();
+  const { register, loading, errors } = useAuth();
 
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
@@ -44,12 +44,12 @@ const RegisterScreen = () => {
 
     try {
       await register(email, password);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
       Toast.show({
         type: "error",
         text1: "Registration Failed",
-        text2: "Please try again later",
+        text2: error.message || "Please try again later",
       });
     }
   };
@@ -79,10 +79,16 @@ const RegisterScreen = () => {
         </View>
 
         <View style={styles.formContainer}>
+          {errors.general && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorMessage}>{errors.general}</Text>
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={20} color={errors.email ? "#d32f2f" : "#666"} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.email && styles.inputError]}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -92,9 +98,9 @@ const RegisterScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={errors.password ? "#d32f2f" : "#666"} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.password && styles.inputError]}
               placeholder="Password"
               value={password}
               onChangeText={setPassword}
@@ -107,15 +113,15 @@ const RegisterScreen = () => {
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color="#666"
+                color={errors.password ? "#d32f2f" : "#666"}
               />
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={errors.confirmPassword ? "#d32f2f" : "#666"} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.confirmPassword && styles.inputError]}
               placeholder="Confirm Password"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -128,10 +134,14 @@ const RegisterScreen = () => {
               <Ionicons
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color="#666"
+                color={errors.confirmPassword ? "#d32f2f" : "#666"}
               />
             </TouchableOpacity>
           </View>
+
+          {errors.email && (
+            <Text style={styles.fieldError}>{errors.email}</Text>
+          )}
 
           <TouchableOpacity
             style={styles.registerButton}
@@ -236,6 +246,29 @@ const styles = StyleSheet.create({
   loginLink: {
     color: "#1e88e5",
     fontWeight: "bold",
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  errorMessage: {
+    color: '#d32f2f',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  fieldError: {
+    color: '#d32f2f',
+    fontSize: 12,
+    marginTop: -12,
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: '#d32f2f',
   },
 });
 

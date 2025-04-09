@@ -9,11 +9,11 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Platform,
   RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
 import { LineChart, PieChart } from "react-native-chart-kit";
+import FinancialDataVisualizer from "../components/FinancialDataVisualizer";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "react-native-toast-message";
@@ -23,6 +23,7 @@ import ChatPanel from "../components/ChatPanel";
 import DrawerMenu from "../components/DrawerMenu";
 import { auth } from "../config/firebaseConfig";
 import { format } from 'date-fns';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Define transaction interface
 interface Transaction {
@@ -66,23 +67,26 @@ interface Statistics {
 }
 
 // Helper function to generate random color based on input string
+// Currently unused but kept for future reference
+/*
 const getRandomColor = (str: string) => {
   // Generate color based on string hash
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   // Convert hash to color
   const c = (hash & 0x00FFFFFF)
     .toString(16)
     .toUpperCase();
-  
+
   return "#" + "00000".substring(0, 6 - c.length) + c;
 };
+*/
 
 const HomeScreen = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,8 +98,6 @@ const HomeScreen = () => {
   const [timePeriod, setTimePeriod] = useState("all"); // all, week, month, year
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<any>(null);
-  const [lineChartData, setLineChartData] = useState<any[]>([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const screenWidth = Dimensions.get("window").width - 40;
@@ -125,12 +127,14 @@ const HomeScreen = () => {
     if (token) {
       fetchTransactions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
     if (token && transactions.length > 0) {
       fetchTransactionStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, transactions, timePeriod]);
 
   useEffect(() => {
@@ -140,10 +144,10 @@ const HomeScreen = () => {
       const filtered = transactions.filter(
         (transaction) =>
           transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (typeof transaction.category === 'string' 
+          (typeof transaction.category === 'string'
             ? transaction.category.toLowerCase().includes(searchQuery.toLowerCase())
             : transaction.category?.name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (transaction.merchant_name && 
+          (transaction.merchant_name &&
             transaction.merchant_name.toLowerCase().includes(searchQuery.toLowerCase()))
       );
       setFilteredTransactions(filtered);
@@ -154,7 +158,7 @@ const HomeScreen = () => {
     try {
       setLoading(true);
       const response = await api.getTransactions(token || "mock-token");
-      
+
       if (response && response.data) {
         // Sort transactions by date (newest first)
         const sortedTransactions = response.data.sort((a: Transaction, b: Transaction) => {
@@ -162,7 +166,7 @@ const HomeScreen = () => {
           const dateB = b.date || b.time_of_transaction || '';
           return new Date(dateB).getTime() - new Date(dateA).getTime();
         });
-        
+
         setTransactions(sortedTransactions);
         setFilteredTransactions(sortedTransactions);
       }
@@ -181,7 +185,7 @@ const HomeScreen = () => {
   const fetchTransactionStats = async () => {
     try {
       setLoading(true);
-      
+
       // Calculate totals from transactions array
       let totalIncome = 0;
       let totalExpenses = 0;
@@ -205,10 +209,10 @@ const HomeScreen = () => {
       transactions.forEach(transaction => {
         if (transaction.is_expense) {  // Only include expenses in category summary
           const amount = typeof transaction.amount === 'string' ? parseFloat(transaction.amount) : transaction.amount;
-          const categoryName = typeof transaction.category === 'string' 
-            ? transaction.category 
+          const categoryName = typeof transaction.category === 'string'
+            ? transaction.category
             : transaction.category?.name || 'Uncategorized';
-          
+
           if (!isNaN(amount)) {
             const currentAmount = categoryMap.get(categoryName) || 0;
             categoryMap.set(categoryName, currentAmount + amount);
@@ -229,7 +233,7 @@ const HomeScreen = () => {
       };
 
       setStatistics(statsData);
-        
+
         // Prepare pie chart data from categorySummary
       if (categorySummary.length > 0) {
           const colors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"];
@@ -240,10 +244,10 @@ const HomeScreen = () => {
             legendFontColor: "#7F7F7F",
             legendFontSize: 12,
           }));
-          
+
           setPieChartData(pieData);
         }
-        
+
         // Create line chart data
           const chartData: ChartData = {
             labels: ["Income", "Expenses", "Net"],
@@ -257,9 +261,9 @@ const HomeScreen = () => {
               },
             ],
           };
-          
+
           setChartData(chartData);
-      
+
     } catch (error) {
       console.error("Error calculating transaction stats:", error);
       Toast.show({
@@ -287,6 +291,8 @@ const HomeScreen = () => {
     router.push("/screens/add-transaction");
   };
 
+  // These navigation functions are kept for reference but currently unused
+  /*
   const navigateToModelMetrics = () => {
     router.push("/screens/model-metrics");
   };
@@ -294,6 +300,7 @@ const HomeScreen = () => {
   const navigateToSettings = () => {
     router.push("/screens/settings");
   };
+  */
 
   const toggleChatPanel = () => {
     setShowChatPanel(!showChatPanel);
@@ -328,7 +335,7 @@ const HomeScreen = () => {
 
     // Convert amount to number if it's a string
     const amount = typeof item.amount === 'string' ? parseFloat(item.amount) : item.amount;
-    
+
     return (
       <TouchableOpacity
         style={styles.transactionItem}
@@ -402,7 +409,7 @@ const HomeScreen = () => {
         >
           <View style={styles.summaryContainer}>
             <Text style={styles.sectionTitle}>Financial Summary</Text>
-            
+
             <View style={styles.timeFilterContainer}>
               <TouchableOpacity
                 style={[styles.timeFilterButton, timePeriod === "all" && styles.activeTimeFilter]}
@@ -429,7 +436,7 @@ const HomeScreen = () => {
                 <Text style={[styles.timeFilterText, timePeriod === "year" && styles.activeTimeFilterText]}>Year</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.balanceCards}>
               <View style={[styles.balanceCard, styles.incomeCard]}>
                 <Text style={styles.balanceLabel}>Income</Text>
@@ -437,14 +444,14 @@ const HomeScreen = () => {
                   ${statistics?.totalIncome.toFixed(2) || "0.00"}
                 </Text>
               </View>
-              
+
               <View style={[styles.balanceCard, styles.expenseCard]}>
                 <Text style={styles.balanceLabel}>Expenses</Text>
                 <Text style={styles.balanceValue}>
                   ${statistics?.totalExpenses.toFixed(2) || "0.00"}
                 </Text>
               </View>
-              
+
               <View style={[styles.balanceCard, styles.netCard]}>
                 <Text style={styles.balanceLabel}>Net</Text>
                 <Text style={styles.balanceValue}>
@@ -453,10 +460,18 @@ const HomeScreen = () => {
               </View>
             </View>
 
-            {chartData && (
+            {/* Enhanced Data Visualization */}
+            <FinancialDataVisualizer
+              transactions={filteredTransactions}
+              width={screenWidth - 40}
+              showFilters={true}
+            />
+
+            {/* Legacy charts kept for reference - can be removed */}
+            {false && chartData && (
               <View style={styles.chartContainer}>
                 <LineChart
-                  data={chartData}
+                  data={chartData as any}
                   width={screenWidth}
                   height={220}
                   chartConfig={chartConfig}
@@ -466,11 +481,11 @@ const HomeScreen = () => {
               </View>
             )}
 
-            {pieChartData.length > 0 && (
+            {false && pieChartData.length > 0 && (
               <View style={styles.pieChartContainer}>
                 <Text style={styles.sectionTitle}>Top Expense Categories</Text>
                 <PieChart
-                  data={pieChartData}
+                  data={pieChartData as any}
                   width={screenWidth}
                   height={220}
                   chartConfig={chartConfig}
@@ -491,15 +506,15 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search transactions..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#999"
-            />
-          </View>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#999"
+              />
+            </View>
 
             {filteredTransactions.length > 0 ? (
               <FlatList
@@ -514,17 +529,17 @@ const HomeScreen = () => {
               <Text style={styles.emptyStateText}>No transactions found</Text>
               </View>
             )}
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
 
-      {/* Add Transaction FAB - Left side */}
+        {/* Add Transaction FAB - Left side */}
             <TouchableOpacity
-        style={styles.addButtonLeft}
+              style={styles.addButtonLeft}
               onPress={navigateToAddTransaction}
             >
               <Ionicons name="add" size={30} color="white" />
             </TouchableOpacity>
-      
+
       {/* Chat FAB - Right side */}
       <TouchableOpacity
         style={styles.chatButtonFab}
@@ -537,7 +552,7 @@ const HomeScreen = () => {
       {showChatPanel && (
         <ChatPanel onClose={() => setShowChatPanel(false)} />
       )}
-      
+
       <Toast />
     </View>
   );

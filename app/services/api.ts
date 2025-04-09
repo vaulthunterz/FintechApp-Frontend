@@ -60,15 +60,43 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
     }
   }
 
+  // Special handling for development mode - adds detailed headers for debugging
+  const debugHeaders = {};
+  if (process.env.NODE_ENV === 'development') {
+    Object.assign(debugHeaders, {
+      'X-Debug-Mode': 'true',
+      'X-Client-Platform': Platform.OS,
+    });
+  }
+
   const config: any = {
     method: method.toLowerCase(),
     url: `${API_BASE_URL}${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...debugHeaders,
+      'Accept': 'application/json'
     },
-    withCredentials: true,  // Always include credentials
+    // Enable credentials for proper CORS handling
+    withCredentials: true,
   };
+
+  // Validate security-critical aspects
+  if (endpoint.includes('/transactions') && !token) {
+    console.error("Critical security warning: Attempting to access transactions without a token");
+    throw new Error("Authentication required for accessing sensitive data");
+  }
+
+  // Print detailed debugging info
+  console.log("Token available:", !!token);
+  if (token) {
+    console.log("Token format check:");
+    console.log("- Token length:", token.length);
+    console.log("- First 10 chars:", token.substring(0, 10));
+    console.log("- Contains dots:", token.includes("."));
+    console.log("- JWT format valid:", token.split('.').length === 3);
+  }
 
   if (data) {
     config.data = data;
@@ -85,15 +113,67 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
     const response = await axios(config);
     console.log(`${method.toUpperCase()} request succeeded with status:`, response.status);
     if (response.data) {
-      console.log("Response data:", JSON.stringify(response.data, null, 2));
+      console.log("Response data preview:", 
+        Array.isArray(response.data) 
+          ? `Array with ${response.data.length} items` 
+          : JSON.stringify(response.data).substring(0, 100) + "..."
+      );
     }
     return response.data;
   } catch (error: any) {
-    console.error(`${method.toUpperCase()} request failed:`, error);
+    console.error(`${method.toUpperCase()} request failed:`, error.message || error);
+    
+    // More detailed error logging
     if (error.response) {
-      console.error('Response data:', error.response.data);
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
       console.error('Response status:', error.response.status);
+      console.error('Response headers:', JSON.stringify(error.response.headers));
+      console.error('Response data:', error.response.data);
+      
+      // Check specifically for auth errors
+      if (error.response.status === 401 || error.response.status === 403) {
+        console.error("Authentication error detected - checking auth state");
+        const currentUser = auth.currentUser;
+        console.error("Current auth state:", currentUser ? "Logged in" : "Logged out");
+        if (currentUser) {
+          console.error("User email:", currentUser.email);
+          console.error("User ID:", currentUser.uid);
+          
+          // Handle authentication errors by attempting to refresh the token
+          try {
+            console.log("Attempting to refresh token...");
+            await currentUser.getIdToken(true);
+            console.log("Token refreshed successfully - retrying request");
+            
+            // Create new config with fresh token
+            const newToken = await currentUser.getIdToken();
+            const newConfig = {
+              ...config,
+              headers: {
+                ...config.headers,
+                'Authorization': `Bearer ${newToken}`
+              }
+            };
+            
+            // Retry request once with new token
+            const retryResponse = await axios(newConfig);
+            console.log("Retry succeeded:", retryResponse.status);
+            return retryResponse.data;
+          } catch (refreshError) {
+            console.error("Token refresh failed:", refreshError);
+          }
+        }
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Error request:', error.request);
+      console.error('Network error or server not responding');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error message:', error.message);
     }
+    
     handleApiError(error);
     throw error;
   }
@@ -418,11 +498,39 @@ export const submitQuestionnaire = async (questionnaireData: any) => {
 };
 
 export const checkQuestionnaireStatus = async () => {
-  const response = await apiRequest('get', '/api/investment/questionnaires/');
-  return {
-    isCompleted: response && response.length > 0,
-    data: response,
-  };
+  try {
+    const response = await apiRequest('get', '/api/investment/questionnaires/status/');
+    return response;
+  } catch (error) {
+    console.error('Error checking questionnaire status:', error);
+    // If there's an error, assume questionnaire is not completed
+    return { isCompleted: false };
+  }
+};
+
+interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export const changePassword = async (data: ChangePasswordData) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/expenses/change-password/`,
+      data,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getToken()}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
 };
 
 // Create an object with all API functions
@@ -466,7 +574,8 @@ const api = {
   updateUserProfile,
   fetchQuestionnaires,
   submitQuestionnaire,
-  checkQuestionnaireStatus
+  checkQuestionnaireStatus,
+  changePassword
 };
 
 // Export the API object as default

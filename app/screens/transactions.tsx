@@ -19,6 +19,7 @@ import DrawerMenu from "../components/DrawerMenu";
 import { auth } from "../config/firebaseConfig";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from "date-fns";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Define transaction interface
 interface Transaction {
@@ -44,6 +45,7 @@ const TransactionsScreen = () => {
   const [isFromDatePickerVisible, setFromDatePickerVisible] = useState(false);
   const [isToDatePickerVisible, setToDatePickerVisible] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (user) {
@@ -83,7 +85,7 @@ const TransactionsScreen = () => {
     try {
       setLoading(true);
       const response = await api.fetchTransactions();
-      
+
       // Process and normalize transaction data
       const normalizedTransactions = response.map((transaction: any) => ({
         id: transaction.id,
@@ -95,7 +97,7 @@ const TransactionsScreen = () => {
         merchant_name: transaction.merchant_name || '',
         time_of_transaction: transaction.time_of_transaction || '',
       }));
-      
+
       setTransactions(normalizedTransactions);
       setFilteredTransactions(normalizedTransactions);
       console.log(`Loaded ${normalizedTransactions.length} transactions`);
@@ -152,7 +154,7 @@ const TransactionsScreen = () => {
 
   const filterTransactions = () => {
     let filtered = [...transactions];
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -164,7 +166,7 @@ const TransactionsScreen = () => {
           (typeof t.category === 'string' && t.category.toLowerCase().includes(query))
       );
     }
-    
+
     // Filter by date range
     if (fromDate) {
       filtered = filtered.filter((t) => {
@@ -172,7 +174,7 @@ const TransactionsScreen = () => {
         return transactionDate >= fromDate;
       });
     }
-    
+
     if (toDate) {
       const endDate = new Date(toDate);
       endDate.setHours(23, 59, 59, 999); // End of day
@@ -181,7 +183,7 @@ const TransactionsScreen = () => {
         return transactionDate <= endDate;
       });
     }
-    
+
     setFilteredTransactions(filtered);
   };
 
@@ -189,7 +191,7 @@ const TransactionsScreen = () => {
     // Format date with fallback for invalid dates
     const formatDate = (dateString: string | undefined) => {
       if (!dateString) return "No date";
-      
+
       try {
         const date = new Date(dateString);
         // Check if date is valid
@@ -202,7 +204,7 @@ const TransactionsScreen = () => {
         return "No date";
       }
     };
-    
+
     return (
       <TouchableOpacity
         style={styles.transactionItem}
@@ -240,7 +242,7 @@ const TransactionsScreen = () => {
     <View style={styles.container}>
       <Header showBackButton={true} isRootScreen={true} onMenuPress={toggleDrawer} />
       <DrawerMenu isVisible={drawerVisible} onClose={toggleDrawer} />
-      
+
       <View style={styles.titleContainer}>
         <Text style={styles.screenTitle}>Transactions</Text>
         <TouchableOpacity
@@ -259,7 +261,7 @@ const TransactionsScreen = () => {
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
         />
-        
+
         <View style={styles.dateFiltersContainer}>
           <TouchableOpacity
             style={styles.datePickerButton}
@@ -269,7 +271,7 @@ const TransactionsScreen = () => {
               {fromDate ? format(fromDate, 'MMM dd, yyyy') : 'From Date'}
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.datePickerButton}
             onPress={showToDatePicker}
@@ -278,9 +280,9 @@ const TransactionsScreen = () => {
               {toDate ? format(toDate, 'MMM dd, yyyy') : 'To Date'}
             </Text>
           </TouchableOpacity>
-          
+
           {fromDate || toDate ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.clearFiltersButton}
               onPress={() => {
                 setFromDate(null);
@@ -291,7 +293,7 @@ const TransactionsScreen = () => {
             </TouchableOpacity>
           ) : null}
         </View>
-        
+
         {isFromDatePickerVisible && (
           <DateTimePicker
             value={fromDate || new Date()}
@@ -299,7 +301,7 @@ const TransactionsScreen = () => {
             onChange={handleFromDateChange}
           />
         )}
-        
+
         {isToDatePickerVisible && (
           <DateTimePicker
             value={toDate || new Date()}
@@ -478,4 +480,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TransactionsScreen; 
+export default TransactionsScreen;

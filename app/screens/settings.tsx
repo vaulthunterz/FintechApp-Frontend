@@ -79,7 +79,7 @@ const SettingsScreen = () => {
 
         <Text style={styles.sectionTitle}>Account</Text>
         
-        <TouchableOpacity style={styles.settingItem} onPress={() => {}}>
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/screens/profile')}>
           <View style={styles.settingInfo}>
             <Ionicons name="person-outline" size={24} color="#555" style={styles.settingIcon} />
             <Text style={styles.settingText}>Profile</Text>
@@ -87,7 +87,7 @@ const SettingsScreen = () => {
           <Ionicons name="chevron-forward" size={20} color="#aaa" />
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.settingItem} onPress={() => {}}>
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/screens/change-password')}>
           <View style={styles.settingInfo}>
             <Ionicons name="lock-closed-outline" size={24} color="#555" style={styles.settingIcon} />
             <Text style={styles.settingText}>Change Password</Text>

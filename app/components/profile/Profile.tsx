@@ -52,33 +52,23 @@ const Profile = () => {
             investment_preference: userProfile.investment_preference || ''
           });
         } else {
-          // No existing profile, continue with default empty values
+          // No existing profile, show empty form
           console.log("No existing investment profile found");
+          Toast.show({
+            type: 'info',
+            text1: 'Welcome!',
+            text2: 'Please fill out your investment profile'
+          });
         }
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching profile:', error);
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Failed to load profile data'
+          text2: 'Failed to load profile data. Please try again.'
         });
-        
-        // Fallback to dummy data for demonstration
-        setTimeout(() => {
-          const dummyData = {
-            id: '123',
-            risk_tolerance: 2,
-            investment_experience: 'intermediate',
-            investment_timeline: 'mid',
-            investment_goals: 'Retirement, Education',
-            investment_preference: 'ETFs, Index Funds'
-          };
-          
-          setProfile(dummyData);
-          setFormData(dummyData);
-          setLoading(false);
-        }, 1000);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -93,19 +83,29 @@ const Profile = () => {
   };
 
   const handleSubmit = async () => {
+    // Validate required fields
+    if (!formData.risk_tolerance || !formData.investment_experience || !formData.investment_timeline) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all required fields'
+      });
+      return;
+    }
+
     setSaving(true);
     
     try {
-      // Make a real API call to update or create the profile
-      if (profile && profile.id) {
+      let updatedProfile;
+      if (profile?.id) {
         // Update existing profile
-        await api.updateUserProfile(profile.id, formData);
+        updatedProfile = await api.updateUserProfile(profile.id, formData);
       } else {
         // Create new profile
-        const newProfile = await api.createUserProfile(formData);
-        setProfile(newProfile);
+        updatedProfile = await api.createUserProfile(formData);
       }
       
+      setProfile(updatedProfile);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -116,7 +116,7 @@ const Profile = () => {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to update profile'
+        text2: 'Failed to update profile. Please try again.'
       });
     } finally {
       setSaving(false);

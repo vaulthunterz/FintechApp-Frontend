@@ -58,22 +58,55 @@ initAnalytics();
 
 // Add a function to handle token refresh with clock skew tolerance
 const getTokenWithRetry = async (retries = 3) => {
+  console.log("getTokenWithRetry called, current user:", !!auth.currentUser);
+  
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    console.error("No user is currently signed in in getTokenWithRetry");
+    throw new Error('No user is currently signed in');
+  }
+  
+  // Setup proper error handling with exponential backoff
+  let lastError = null;
+  let delayMs = 1000;
+  
   for (let i = 0; i < retries; i++) {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('No user is currently signed in');
+      console.log(`Attempt ${i+1}/${retries} to get token for user:`, currentUser.email);
+      
+      // Force token refresh on all but the first attempt
+      const forceRefresh = i > 0;
+      const token = await currentUser.getIdToken(forceRefresh);
+      
+      if (!token) {
+        throw new Error('Empty token received from Firebase');
       }
-      // Force token refresh and add a small delay to account for clock skew
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const token = await currentUser.getIdToken(true);
+      
+      // Validate token format (should be a JWT with 3 parts separated by dots)
+      if (!token.includes('.') || token.split('.').length !== 3) {
+        console.error("Invalid token format received");
+        throw new Error('Invalid token format received');
+      }
+      
+      console.log("Token retrieved successfully:", token.substring(0, 10) + "...");
       return token;
     } catch (error) {
-      if (i === retries - 1) throw error;
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.error(`Attempt ${i+1}/${retries} failed:`, error);
+      lastError = error;
+      
+      if (i === retries - 1) {
+        // Last attempt failed
+        break;
+      }
+      
+      // Wait with exponential backoff before retrying
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      delayMs *= 2; // Double the delay for next attempt
     }
   }
+  
+  // All retries failed
+  throw lastError || new Error('Failed to get token after multiple attempts');
 };
 
 // Export named exports

@@ -18,12 +18,16 @@
     "axios": "^1.6.7",
     "date-fns": "^4.1.0",
     "expo": "~52.0.42",
+    "expo-haptics": "latest",
     "expo-router": "~4.0.20",
     "expo-splash-screen": "~0.29.22",
     "expo-status-bar": "^2.0.1",
     "expo-system-ui": "~4.0.9",
+    "expo-web-browser": "latest",
     "firebase": "^11.6.0",
     "notistack": "^3.0.1",
+    "date-fns": "^2.30.0",
+    "@react-native-community/datetimepicker": "^7.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-native": "0.76.9",
@@ -34,10 +38,8 @@
     "react-native-web": "~0.19.6",
     "react-router-dom": "^6.22.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4",
-    "expo-haptics":"latest",
-    "expo-web-browser":"latest"
-    
+    "victory-native": "^41.16.2",
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "expo start",

@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import QuestionnaireReminder from '../components/investment/QuestionnaireReminder';
 import api from '../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import WebDonutChart from '../components/charts/WebDonutChart';
+import WebTimeSeriesChart from '../components/charts/WebTimeSeriesChart';
+import ChartSelector from '../components/charts/ChartSelector';
+import type { ChartType } from '../components/charts/ChartSelector';
+import FilterControls, { FilterOptions } from '../components/filters/FilterControls';
+import { getDefaultFilters } from '../utils/filterUtils';
 
 // Add type definition for asset allocation items
 interface AssetAllocation {
@@ -15,6 +22,7 @@ interface AssetAllocation {
 
 const InvestmentScreen = () => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [investmentSummary, setInvestmentSummary] = useState({
     totalInvested: 0,
@@ -22,19 +30,23 @@ const InvestmentScreen = () => {
     returns: 0,
     returnsPercentage: 0
   });
-  
+
   const [assetAllocation, setAssetAllocation] = useState<AssetAllocation[]>([
     { type: 'Stocks', percentage: 0, value: 0 },
     { type: 'Bonds', percentage: 0, value: 0 },
     { type: 'Cash', percentage: 0, value: 0 }
   ]);
-  
+  const [selectedChart, setSelectedChart] = useState<ChartType>('donut');
+  const [performanceData, setPerformanceData] = useState<any[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>(getDefaultFilters());
+  const screenWidth = Dimensions.get('window').width - 40;
+
   useEffect(() => {
     const fetchPortfolioData = async () => {
       try {
         // Get portfolio summary from API
         const portfolio = await api.getPortfolioSummary();
-        
+
         if (portfolio) {
           // Set investment summary
           setInvestmentSummary({
@@ -43,7 +55,7 @@ const InvestmentScreen = () => {
             returns: portfolio.returns || 0,
             returnsPercentage: portfolio.returns_percentage || 0
           });
-          
+
           // Set asset allocation if available
           if (portfolio.asset_allocation && Array.isArray(portfolio.asset_allocation)) {
             setAssetAllocation(portfolio.asset_allocation.map((asset: any) => ({
@@ -52,10 +64,21 @@ const InvestmentScreen = () => {
               value: asset.value
             })));
           }
+
+          // Generate performance data (this would come from the API in a real app)
+          const performanceHistory = [
+            { x: 'Jan', y: portfolio.total_invested * 0.98 },
+            { x: 'Feb', y: portfolio.total_invested * 1.01 },
+            { x: 'Mar', y: portfolio.total_invested * 1.03 },
+            { x: 'Apr', y: portfolio.total_invested * 1.02 },
+            { x: 'May', y: portfolio.total_invested * 1.05 },
+            { x: 'Jun', y: portfolio.current_value }
+          ];
+          setPerformanceData([performanceHistory]);
         }
       } catch (error) {
         console.error('Error fetching portfolio data:', error);
-        
+
         // Fallback to demo data
         setInvestmentSummary({
           totalInvested: 25000,
@@ -63,28 +86,39 @@ const InvestmentScreen = () => {
           returns: 2500,
           returnsPercentage: 10
         });
-        
+
         setAssetAllocation([
           { type: 'Stocks', percentage: 60, value: 16500 },
           { type: 'Bonds', percentage: 30, value: 8250 },
           { type: 'Cash', percentage: 10, value: 2750 }
         ]);
+
+        // Generate demo performance data
+        const demoPerformanceHistory = [
+          { x: 'Jan', y: 25000 * 0.98 },
+          { x: 'Feb', y: 25000 * 1.01 },
+          { x: 'Mar', y: 25000 * 1.03 },
+          { x: 'Apr', y: 25000 * 1.02 },
+          { x: 'May', y: 25000 * 1.05 },
+          { x: 'Jun', y: 27500 }
+        ];
+        setPerformanceData([demoPerformanceHistory]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchPortfolioData();
   }, []);
-  
+
   const handleUpdateProfile = () => {
     router.push('/screens/profile');
   };
-  
+
   const handleStartQuestionnaire = () => {
     router.push('/screens/investment-questionnaire');
   };
-  
+
   const handleViewRecommendations = async () => {
     // In a real app, this would navigate to a recommendations screen
     try {
@@ -112,26 +146,26 @@ const InvestmentScreen = () => {
           headerTitleStyle: { fontWeight: 'bold' }
         }}
       />
-      
+
       <ScrollView style={styles.scrollView}>
         {/* Questionnaire Reminder */}
         <QuestionnaireReminder isCompact={true} />
-        
+
         {/* Investment Summary Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Investment Summary</Text>
-          
+
           <View style={styles.summaryContainer}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Total Invested</Text>
               <Text style={styles.summaryAmount}>${investmentSummary.totalInvested.toLocaleString()}</Text>
             </View>
-            
+
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Current Value</Text>
               <Text style={styles.summaryAmount}>${investmentSummary.currentValue.toLocaleString()}</Text>
             </View>
-            
+
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Returns</Text>
               <Text style={[
@@ -143,43 +177,78 @@ const InvestmentScreen = () => {
             </View>
           </View>
         </View>
-        
-        {/* Asset Allocation Card */}
+
+        {/* Asset Allocation Card with Enhanced Visualization */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Asset Allocation</Text>
-          
+
+          <FilterControls
+            availableCategories={['Stocks', 'Bonds', 'Cash', 'Real Estate', 'Commodities']}
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+
+          <View style={styles.chartSelectionContainer}>
+            <ChartSelector
+              selectedChart={selectedChart}
+              onSelectChart={setSelectedChart}
+              availableCharts={['donut', 'timeSeries']}
+            />
+          </View>
+
+          {selectedChart === 'donut' ? (
+            <WebDonutChart
+              data={assetAllocation.map(asset => ({
+                x: asset.type,
+                y: asset.value
+              }))}
+              title="Portfolio Allocation"
+              width={screenWidth}
+              colors={['#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#F44336']}
+            />
+          ) : (
+            <WebTimeSeriesChart
+              data={performanceData}
+              title="Portfolio Performance"
+              yAxisLabel="Value"
+              xAxisLabel="Month"
+              legendItems={[{ name: 'Portfolio Value', color: '#4CAF50' }]}
+              width={screenWidth}
+            />
+          )}
+
           {assetAllocation.map((asset, index) => (
             <View key={index} style={styles.assetItem}>
               <View style={styles.assetHeader}>
                 <Text style={styles.assetType}>{asset.type}</Text>
                 <Text style={styles.assetPercentage}>{asset.percentage}%</Text>
               </View>
-              
+
               <View style={styles.progressBarContainer}>
-                <View 
+                <View
                   style={[
-                    styles.progressBar, 
-                    { 
+                    styles.progressBar,
+                    {
                       width: `${asset.percentage}%`,
-                      backgroundColor: 
-                        index === 0 ? '#1976d2' : 
+                      backgroundColor:
+                        index === 0 ? '#1976d2' :
                         index === 1 ? '#2e7d32' : '#ff9800'
                     }
-                  ]} 
+                  ]}
                 />
               </View>
-              
+
               <Text style={styles.assetValue}>${asset.value.toLocaleString()}</Text>
             </View>
           ))}
         </View>
-        
+
         {/* Actions Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Actions</Text>
-          
+
           <View style={styles.actionsContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleUpdateProfile}
             >
@@ -188,8 +257,8 @@ const InvestmentScreen = () => {
               </View>
               <Text style={styles.actionText}>Update Profile</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleStartQuestionnaire}
             >
@@ -198,8 +267,8 @@ const InvestmentScreen = () => {
               </View>
               <Text style={styles.actionText}>Investment Questionnaire</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleViewRecommendations}
             >
@@ -210,11 +279,11 @@ const InvestmentScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Disclaimer */}
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerText}>
-            The investment information provided is for demonstration purposes only. 
+            The investment information provided is for demonstration purposes only.
             Past performance is not indicative of future results.
           </Text>
         </View>
@@ -330,6 +399,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  chartSelectionContainer: {
+    marginBottom: 10,
+  },
   actionText: {
     fontSize: 14,
     color: '#333',
@@ -350,4 +422,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InvestmentScreen; 
+export default InvestmentScreen;
