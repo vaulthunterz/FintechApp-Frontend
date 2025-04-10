@@ -8,11 +8,15 @@ import {
   Switch,
   Animated,
   Dimensions,
-  Modal
+  Modal,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 interface SettingsDrawerProps {
   isVisible: boolean;
@@ -21,8 +25,8 @@ interface SettingsDrawerProps {
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) => {
   const { logout } = useAuth();
+  const { isDark, toggleTheme, theme, setTheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const [darkMode, setDarkMode] = React.useState(false);
   const [notifications, setNotifications] = React.useState(true);
   const [biometricAuth, setBiometricAuth] = React.useState(false);
 
@@ -57,6 +61,32 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
     }
   };
 
+  // Get theme colors
+  const { colors } = useTheme();
+
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.card,
+      shadowColor: isDark ? '#000' : '#000',
+    },
+    title: {
+      color: colors.text,
+    },
+    sectionTitle: {
+      color: colors.text,
+    },
+    settingText: {
+      color: colors.text,
+    },
+    settingItem: {
+      borderBottomColor: colors.border,
+    },
+    versionText: {
+      color: colors.textSecondary,
+    }
+  };
+
   return (
     <Modal
       animationType="none" // Disable default animation
@@ -70,6 +100,7 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
         <Animated.View
           style={[
             styles.container,
+            dynamicStyles.container,
             {
               transform: [{ translateX: slideAnim }],
               paddingTop: insets.top > 0 ? insets.top : 20,
@@ -78,37 +109,37 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
           ]}
         >
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={[styles.title, dynamicStyles.title]}>Settings</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Appearance</Text>
 
-            <View style={styles.settingItem}>
+            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
               <View style={styles.settingInfo}>
-                <Ionicons name="moon-outline" size={24} color="#555" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Dark Mode</Text>
+                <Ionicons name="moon-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>Dark Mode</Text>
               </View>
               <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
+                value={isDark}
+                onValueChange={toggleTheme}
                 trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={darkMode ? "#1976d2" : "#f4f3f4"}
+                thumbColor={isDark ? "#1976d2" : "#f4f3f4"}
               />
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notifications</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Notifications</Text>
 
-            <View style={styles.settingItem}>
+            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
               <View style={styles.settingInfo}>
-                <Ionicons name="notifications-outline" size={24} color="#555" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Push Notifications</Text>
+                <Ionicons name="notifications-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>Push Notifications</Text>
               </View>
               <Switch
                 value={notifications}
@@ -120,12 +151,12 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Security</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Security</Text>
 
-            <View style={styles.settingItem}>
+            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
               <View style={styles.settingInfo}>
-                <Ionicons name="finger-print-outline" size={24} color="#555" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Biometric Authentication</Text>
+                <Ionicons name="finger-print-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>Biometric Authentication</Text>
               </View>
               <Switch
                 value={biometricAuth}
@@ -137,26 +168,86 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account</Text>
 
-            <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
+            <TouchableOpacity
+              style={[styles.settingItem, dynamicStyles.settingItem]}
+              onPress={() => {
+                onClose();
+                router.push('/screens/profile');
+              }}
+            >
               <View style={styles.settingInfo}>
-                <Ionicons name="log-out-outline" size={24} color="#d32f2f" style={styles.settingIcon} />
-                <Text style={[styles.settingText, { color: '#d32f2f' }]}>Logout</Text>
+                <Ionicons name="person-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>User Profile</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#d32f2f" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.settingItem, dynamicStyles.settingItem]}
+              onPress={() => {
+                onClose();
+                router.push('/screens/change-password');
+              }}
+            >
+              <View style={styles.settingInfo}>
+                <Ionicons name="key-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>Change Password</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.settingItem, dynamicStyles.settingItem]}
+              onPress={() => {
+                // Show confirmation dialog before deleting account
+                Alert.alert(
+                  'Delete Account',
+                  'Are you sure you want to delete your account? This action cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: () => {
+                        // Implement account deletion logic here
+                        Toast.show({
+                          type: 'info',
+                          text1: 'Feature Coming Soon',
+                          text2: 'Account deletion will be available in a future update.'
+                        });
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <View style={styles.settingInfo}>
+                <Ionicons name="trash-outline" size={24} color={colors.error} style={styles.settingIcon} />
+                <Text style={[styles.settingText, { color: colors.error }]}>Delete Account</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.error} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.settingItem, dynamicStyles.settingItem]} onPress={handleLogout}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="log-out-outline" size={24} color={colors.error} style={styles.settingIcon} />
+                <Text style={[styles.settingText, { color: colors.error }]}>Logout</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.error} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>About</Text>
 
-            <View style={styles.settingItem}>
+            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
               <View style={styles.settingInfo}>
-                <Ionicons name="information-circle-outline" size={24} color="#555" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Version</Text>
+                <Ionicons name="information-circle-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                <Text style={[styles.settingText, dynamicStyles.settingText]}>Version</Text>
               </View>
-              <Text style={styles.versionText}>1.0.0</Text>
+              <Text style={[styles.versionText, dynamicStyles.versionText]}>1.0.0</Text>
             </View>
           </View>
         </ScrollView>

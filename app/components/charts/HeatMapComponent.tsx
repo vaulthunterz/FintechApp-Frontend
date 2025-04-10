@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { VictoryTheme, VictoryLabel, VictoryAxis, VictoryChart, VictoryHeatmap } from 'victory-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeatMapProps {
   data: Array<{ x: number; y: number; heat: number }>;
@@ -23,27 +24,38 @@ const HeatMapComponent: React.FC<HeatMapProps> = ({
   xLabels = [],
   yLabels = []
 }) => {
+  const { colors } = useTheme();
   // Find min and max heat values for color scaling
   const heatValues = data.map(d => d.heat);
   const minHeat = Math.min(...heatValues);
   const maxHeat = Math.max(...heatValues);
-  
+
   // Color scale function
   const getHeatColor = (heat: number) => {
     // Normalize heat value between 0 and 1
     const normalizedHeat = (heat - minHeat) / (maxHeat - minHeat);
-    
+
     // Blue to red color scale
     const r = Math.round(normalizedHeat * 255);
     const b = Math.round(255 - (normalizedHeat * 255));
     const g = Math.round(100 - (normalizedHeat * 100));
-    
+
     return `rgb(${r}, ${g}, ${b})`;
   };
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.card,
+    },
+    title: {
+      color: colors.text,
+    }
+  };
+
   return (
-    <View style={[styles.container, { width }]}>
-      <Text style={styles.title}>{title}</Text>
+    <View style={[styles.container, dynamicStyles.container, { width }]}>
+      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
       <VictoryChart
         width={width}
         height={height}
@@ -85,11 +97,11 @@ const HeatMapComponent: React.FC<HeatMapProps> = ({
           }}
           labels={({ datum }) => `$${datum.heat.toFixed(0)}`}
           labelComponent={
-            <VictoryLabel 
-              style={{ 
+            <VictoryLabel
+              style={{
                 fill: ({ datum }) => (datum.heat > (maxHeat + minHeat) / 2) ? 'white' : 'black',
                 fontSize: 9
-              }} 
+              }}
             />
           }
         />
@@ -100,7 +112,6 @@ const HeatMapComponent: React.FC<HeatMapProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginVertical: 10,

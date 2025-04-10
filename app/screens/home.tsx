@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,9 @@ import { LineChart, PieChart } from "react-native-chart-kit";
 import FinancialDataVisualizer from "../components/FinancialDataVisualizer";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import Toast from "react-native-toast-message";
-import api from "../services/api";
+import { getTransactionsWithPagination } from "../services/api";
 import Header from "../components/Header";
 import ChatPanel from "../components/ChatPanel";
 import DrawerMenu from "../components/DrawerMenu";
@@ -87,6 +88,7 @@ const getRandomColor = (str: string) => {
 
 const HomeScreen = () => {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +101,16 @@ const HomeScreen = () => {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // Pagination state
+  const [paginationInfo, setPaginationInfo] = useState<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    totalPages: number;
+    currentPage: number;
+    pageTotalAmount?: number;
+  }>({ count: 0, next: null, previous: null, totalPages: 1, currentPage: 1 });
 
   const screenWidth = Dimensions.get("window").width - 40;
 
@@ -154,18 +166,26 @@ const HomeScreen = () => {
     }
   }, [searchQuery, transactions]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (page?: number) => {
     try {
       setLoading(true);
-      const response = await api.getTransactions(token || "mock-token");
+      // Add page parameter to the API call if provided
+      const endpoint = page ? `/api/expenses/transactions/?page=${page}` : '/api/expenses/transactions/';
+      const response = await getTransactionsWithPagination(token || "mock-token", endpoint);
 
       if (response && response.data) {
         // Sort transactions by date (newest first)
-        const sortedTransactions = response.data.sort((a: Transaction, b: Transaction) => {
+        const sortedTransactions = [...response.data].sort((a: Transaction, b: Transaction) => {
           const dateA = a.date || a.time_of_transaction || '';
           const dateB = b.date || b.time_of_transaction || '';
           return new Date(dateB).getTime() - new Date(dateA).getTime();
         });
+
+        // Store pagination info if available
+        if (response.pagination) {
+          console.log('Pagination info:', response.pagination);
+          setPaginationInfo(response.pagination);
+        }
 
         setTransactions(sortedTransactions);
         setFilteredTransactions(sortedTransactions);
@@ -330,7 +350,7 @@ const HomeScreen = () => {
     };
 
     // Determine amount color based on transaction type
-    const amountColor = item.is_expense ? '#FF4B4B' : '#4CAF50'; // Red for expenses, green for income
+    const amountColor = item.is_expense ? colors.error : colors.success; // Red for expenses, green for income
     const amountPrefix = item.is_expense ? '-' : '+';
 
     // Convert amount to number if it's a string
@@ -338,18 +358,18 @@ const HomeScreen = () => {
 
     return (
       <TouchableOpacity
-        style={styles.transactionItem}
+        style={[styles.transactionItem, dynamicStyles.transactionCard]}
         onPress={() => router.push(`/screens/edit-transaction?id=${item.id}`)}
       >
         <View style={styles.transactionContent}>
           <View style={styles.transactionLeft}>
-            <Text style={styles.transactionDescription}>
+            <Text style={[styles.transactionDescription, dynamicStyles.transactionTitle]}>
               {item.merchant_name || item.description}
             </Text>
-          <Text style={styles.transactionCategory}>
+          <Text style={[styles.transactionCategory, { color: colors.textSecondary }]}>
               {typeof item.category === 'string' ? item.category : item.category?.name}
           </Text>
-          <Text style={styles.transactionDate}>
+          <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
               {formatDate(item.time_of_transaction)}
             </Text>
           </View>
@@ -364,76 +384,147 @@ const HomeScreen = () => {
   };
 
   const chartConfig = {
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
+    backgroundColor: colors.card,
+    backgroundGradientFrom: colors.card,
+    backgroundGradientTo: colors.card,
     decimalPlaces: 2,
-    color: (opacity = 1) => `rgba(30, 136, 229, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1) => {
+      // Convert hex to rgba
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+
+      const rgb = hexToRgb(colors.primary);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
+    labelColor: (opacity = 1) => {
+      const rgb = isDark ? { r: 224, g: 224, b: 224 } : { r: 33, g: 37, b: 41 };
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
     style: {
       borderRadius: 16,
     },
     propsForDots: {
       r: "6",
       strokeWidth: "2",
-      stroke: "#1e88e5",
+      stroke: colors.primary,
+    },
+  };
+
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.background,
+    },
+    content: {
+      backgroundColor: colors.background,
+    },
+    sectionTitle: {
+      color: colors.text,
+    },
+    loadingText: {
+      color: colors.text,
+    },
+    summaryCard: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    summaryTitle: {
+      color: colors.text,
+    },
+    summaryValue: {
+      color: colors.text,
+    },
+    timeFilterButton: {
+      borderColor: colors.border,
+    },
+    timeFilterText: {
+      color: colors.textSecondary,
+    },
+    activeTimeFilter: {
+      backgroundColor: colors.primary,
+    },
+    activeTimeFilterText: {
+      color: '#fff',
+    },
+    transactionCard: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    transactionTitle: {
+      color: colors.text,
+    },
+    transactionAmount: {
+      color: colors.text,
+    },
+    searchInput: {
+      backgroundColor: colors.card,
+      color: colors.text,
+      borderColor: colors.border,
     },
   };
 
   if (loading && transactions.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <Header />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1e88e5" />
-          <Text style={styles.loadingText}>Loading your financial data...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading your financial data...</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <Header isRootScreen={true} onMenuPress={toggleDrawer} />
       <DrawerMenu isVisible={drawerVisible} onClose={toggleDrawer} />
 
         <ScrollView
-          style={styles.content}
+          style={[styles.content, dynamicStyles.content]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           }
         >
           <View style={styles.summaryContainer}>
-            <Text style={styles.sectionTitle}>Financial Summary</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Financial Summary</Text>
 
             <View style={styles.timeFilterContainer}>
               <TouchableOpacity
-                style={[styles.timeFilterButton, timePeriod === "all" && styles.activeTimeFilter]}
+                style={[styles.timeFilterButton, dynamicStyles.timeFilterButton, timePeriod === "all" && [styles.activeTimeFilter, dynamicStyles.activeTimeFilter]]}
                 onPress={() => selectTimePeriod("all")}
               >
-                <Text style={[styles.timeFilterText, timePeriod === "all" && styles.activeTimeFilterText]}>All</Text>
+                <Text style={[styles.timeFilterText, dynamicStyles.timeFilterText, timePeriod === "all" && [styles.activeTimeFilterText, dynamicStyles.activeTimeFilterText]]}>All</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.timeFilterButton, timePeriod === "week" && styles.activeTimeFilter]}
+                style={[styles.timeFilterButton, dynamicStyles.timeFilterButton, timePeriod === "week" && [styles.activeTimeFilter, dynamicStyles.activeTimeFilter]]}
                 onPress={() => selectTimePeriod("week")}
               >
-                <Text style={[styles.timeFilterText, timePeriod === "week" && styles.activeTimeFilterText]}>Week</Text>
+                <Text style={[styles.timeFilterText, dynamicStyles.timeFilterText, timePeriod === "week" && [styles.activeTimeFilterText, dynamicStyles.activeTimeFilterText]]}>Week</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.timeFilterButton, timePeriod === "month" && styles.activeTimeFilter]}
+                style={[styles.timeFilterButton, dynamicStyles.timeFilterButton, timePeriod === "month" && [styles.activeTimeFilter, dynamicStyles.activeTimeFilter]]}
                 onPress={() => selectTimePeriod("month")}
               >
-                <Text style={[styles.timeFilterText, timePeriod === "month" && styles.activeTimeFilterText]}>Month</Text>
+                <Text style={[styles.timeFilterText, dynamicStyles.timeFilterText, timePeriod === "month" && [styles.activeTimeFilterText, dynamicStyles.activeTimeFilterText]]}>Month</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.timeFilterButton, timePeriod === "year" && styles.activeTimeFilter]}
+                style={[styles.timeFilterButton, dynamicStyles.timeFilterButton, timePeriod === "year" && [styles.activeTimeFilter, dynamicStyles.activeTimeFilter]]}
                 onPress={() => selectTimePeriod("year")}
               >
-                <Text style={[styles.timeFilterText, timePeriod === "year" && styles.activeTimeFilterText]}>Year</Text>
+                <Text style={[styles.timeFilterText, dynamicStyles.timeFilterText, timePeriod === "year" && [styles.activeTimeFilterText, dynamicStyles.activeTimeFilterText]]}>Year</Text>
               </TouchableOpacity>
             </View>
 
@@ -500,33 +591,58 @@ const HomeScreen = () => {
 
           <View style={styles.recentTransactionsContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Recent Transactions</Text>
               <TouchableOpacity onPress={navigateToTransactions}>
-                <Text style={styles.viewAllText}>View All</Text>
+                <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, dynamicStyles.searchInput]}
                 placeholder="Search transactions..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
               />
             </View>
 
             {filteredTransactions.length > 0 ? (
-              <FlatList
-              data={filteredTransactions.slice(0, 5)}
-                keyExtractor={(item) => item.id}
-                renderItem={renderTransactionItem}
-                scrollEnabled={false}
-              />
+              <>
+                <FlatList
+                  data={filteredTransactions.slice(0, 5)}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderTransactionItem}
+                  scrollEnabled={false}
+                />
+
+                {/* Pagination Controls */}
+                <View style={styles.paginationContainer}>
+                  <TouchableOpacity
+                    style={[styles.paginationButton, { backgroundColor: colors.card, borderColor: colors.border }, paginationInfo.previous === null && styles.paginationButtonDisabled]}
+                    onPress={() => paginationInfo.previous && fetchTransactions(paginationInfo.currentPage - 1)}
+                    disabled={paginationInfo.previous === null}
+                  >
+                    <Text style={[styles.paginationButtonText, { color: colors.text }]}>Previous</Text>
+                  </TouchableOpacity>
+
+                  <Text style={[styles.paginationText, { color: colors.text }]}>
+                    Page {paginationInfo.currentPage} of {paginationInfo.totalPages}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.paginationButton, { backgroundColor: colors.card, borderColor: colors.border }, paginationInfo.next === null && styles.paginationButtonDisabled]}
+                    onPress={() => paginationInfo.next && fetchTransactions(paginationInfo.currentPage + 1)}
+                    disabled={paginationInfo.next === null}
+                  >
+                    <Text style={[styles.paginationButtonText, { color: colors.text }]}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             ) : (
               <View style={styles.emptyStateContainer}>
-                <Ionicons name="receipt-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>No transactions found</Text>
+                <Ionicons name="receipt-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>No transactions found</Text>
               </View>
             )}
           </View>
@@ -534,7 +650,7 @@ const HomeScreen = () => {
 
         {/* Add Transaction FAB - Left side */}
             <TouchableOpacity
-              style={styles.addButtonLeft}
+              style={[styles.addButtonLeft, { backgroundColor: colors.primary }]}
               onPress={navigateToAddTransaction}
             >
               <Ionicons name="add" size={30} color="white" />
@@ -542,7 +658,7 @@ const HomeScreen = () => {
 
       {/* Chat FAB - Right side */}
       <TouchableOpacity
-        style={styles.chatButtonFab}
+        style={[styles.chatButtonFab, { backgroundColor: colors.primary }]}
         onPress={toggleChatPanel}
       >
         <Ionicons name="chatbubble-ellipses" size={24} color="white" />
@@ -808,6 +924,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 999,
+  },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 10,
+    paddingHorizontal: 5,
+  },
+  paginationButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#cccccc',
+  },
+  paginationButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#555',
   },
 });
 

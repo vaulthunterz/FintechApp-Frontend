@@ -44,9 +44,9 @@ const getToken = async () => {
 // Function to make API requests with authentication
 const apiRequest = async (method: string, endpoint: string, data: any = null) => {
   console.log(`API Request: ${method.toUpperCase()} ${endpoint}`);
-  
+
   let token = null;
-  
+
   // Only get token if not login/register endpoint
   if (!endpoint.includes('/login') && !endpoint.includes('/register')) {
     try {
@@ -113,16 +113,16 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
     const response = await axios(config);
     console.log(`${method.toUpperCase()} request succeeded with status:`, response.status);
     if (response.data) {
-      console.log("Response data preview:", 
-        Array.isArray(response.data) 
-          ? `Array with ${response.data.length} items` 
+      console.log("Response data preview:",
+        Array.isArray(response.data)
+          ? `Array with ${response.data.length} items`
           : JSON.stringify(response.data).substring(0, 100) + "..."
       );
     }
     return response.data;
   } catch (error: any) {
     console.error(`${method.toUpperCase()} request failed:`, error.message || error);
-    
+
     // More detailed error logging
     if (error.response) {
       // The request was made and the server responded with a status code
@@ -130,7 +130,7 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
       console.error('Response status:', error.response.status);
       console.error('Response headers:', JSON.stringify(error.response.headers));
       console.error('Response data:', error.response.data);
-      
+
       // Check specifically for auth errors
       if (error.response.status === 401 || error.response.status === 403) {
         console.error("Authentication error detected - checking auth state");
@@ -139,13 +139,13 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
         if (currentUser) {
           console.error("User email:", currentUser.email);
           console.error("User ID:", currentUser.uid);
-          
+
           // Handle authentication errors by attempting to refresh the token
           try {
             console.log("Attempting to refresh token...");
             await currentUser.getIdToken(true);
             console.log("Token refreshed successfully - retrying request");
-            
+
             // Create new config with fresh token
             const newToken = await currentUser.getIdToken();
             const newConfig = {
@@ -155,7 +155,7 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
                 'Authorization': `Bearer ${newToken}`
               }
             };
-            
+
             // Retry request once with new token
             const retryResponse = await axios(newConfig);
             console.log("Retry succeeded:", retryResponse.status);
@@ -173,7 +173,7 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
       // Something happened in setting up the request that triggered an Error
       console.error('Error message:', error.message);
     }
-    
+
     handleApiError(error);
     throw error;
   }
@@ -182,15 +182,15 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
 // Centralized error handling
 const handleApiError = (error: any) => {
   console.error('API Error:', error);
-  
+
   let errorMessage = 'An unexpected error occurred';
-  
+
   if (error.response) {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
     console.error('Response data:', error.response.data);
     console.error('Response status:', error.response.status);
-    
+
     // Extract error message from different possible formats
     if (error.response.data) {
       if (typeof error.response.data === 'string') {
@@ -219,7 +219,7 @@ const handleApiError = (error: any) => {
     console.error('Error message:', error.message);
     errorMessage = error.message || 'Failed to connect to server';
   }
-  
+
   // Show toast notification
   Toast.show({
     type: 'error',
@@ -233,16 +233,82 @@ const handleApiError = (error: any) => {
 // API Functions
 
 // Transactions
-export const fetchTransactions = async () => {
-  return apiRequest('get', '/api/expenses/transactions/');
+export const fetchTransactions = async (page?: number) => {
+  const endpoint = page ? `/api/expenses/transactions/?page=${page}` : '/api/expenses/transactions/';
+  const response = await apiRequest('get', endpoint);
+
+  // Handle paginated response
+  if (response && response.results) {
+    return {
+      data: response.results,
+      pagination: {
+        count: response.count,
+        next: response.next,
+        previous: response.previous,
+        totalPages: response.total_pages,
+        currentPage: response.current_page,
+        pageTotalAmount: response.page_total_amount
+      }
+    };
+  }
+
+  // Fallback for non-paginated response (should not happen after pagination implementation)
+  return { data: response, pagination: null };
 };
 
 export const getTransactions = async (token: string) => {
   try {
     const response = await apiRequest('get', '/api/expenses/transactions/');
-    return { data: response };
+    // Handle paginated response - extract results array
+    if (response && response.results) {
+      console.log(`Received paginated response with ${response.results.length} transactions`);
+      return {
+        data: response.results,
+        pagination: {
+          count: response.count,
+          next: response.next,
+          previous: response.previous,
+          totalPages: response.total_pages,
+          currentPage: response.current_page,
+          pageTotalAmount: response.page_total_amount
+        }
+      };
+    } else {
+      // Fallback for non-paginated response (should not happen after pagination implementation)
+      console.warn('Received non-paginated response from transactions API');
+      return { data: response };
+    }
   } catch (error) {
     console.error("Error fetching transactions:", error);
+    throw error;
+  }
+};
+
+// Function to get transactions with pagination support
+export const getTransactionsWithPagination = async (token: string, endpoint: string = '/api/expenses/transactions/') => {
+  try {
+    const response = await apiRequest('get', endpoint);
+    // Handle paginated response - extract results array
+    if (response && response.results) {
+      console.log(`Received paginated response with ${response.results.length} transactions from ${endpoint}`);
+      return {
+        data: response.results,
+        pagination: {
+          count: response.count,
+          next: response.next,
+          previous: response.previous,
+          totalPages: response.total_pages,
+          currentPage: response.current_page,
+          pageTotalAmount: response.page_total_amount
+        }
+      };
+    } else {
+      // Fallback for non-paginated response
+      console.warn('Received non-paginated response from transactions API');
+      return { data: response };
+    }
+  } catch (error) {
+    console.error("Error fetching transactions with pagination:", error);
     throw error;
   }
 };
@@ -290,7 +356,7 @@ export const deleteTransaction = async (transactionId: string) => {
 export const fetchCategories = async () => {
   try {
     const response = await apiRequest('get', '/api/expenses/categories/');
-    
+
     // Validate response
     if (Array.isArray(response)) {
       // Sanitize category data to ensure they have proper format
@@ -312,7 +378,7 @@ export const fetchCategories = async () => {
 export const fetchSubCategories = async (categoryId: string) => {
   try {
     const response = await apiRequest('get', `/api/expenses/subcategories/?category_id=${categoryId}`);
-    
+
     // Validate response
     if (Array.isArray(response)) {
       // Sanitize subcategory data to ensure they have proper format
@@ -494,17 +560,55 @@ export const fetchQuestionnaires = async () => {
 };
 
 export const submitQuestionnaire = async (questionnaireData: any) => {
-  return apiRequest('post', '/api/investment/questionnaires/', questionnaireData);
+  try {
+    return await apiRequest('post', '/api/investment/questionnaires/', questionnaireData);
+  } catch (error) {
+    // If we get a 404, the investment module is not available
+    if (error.response && error.response.status === 404) {
+      console.log('Investment module is not available, returning mock response');
+      // Return a mock response that indicates success but with a maintenance message
+      return {
+        id: 'mock-id',
+        message: 'Investment module is currently under maintenance',
+        status: 'maintenance'
+      };
+    }
+    // For other errors, rethrow
+    throw error;
+  }
 };
 
 export const checkQuestionnaireStatus = async () => {
   try {
-    const response = await apiRequest('get', '/api/investment/questionnaires/status/');
-    return response;
+    // First check if the investment module is available
+    try {
+      const response = await apiRequest('get', '/api/investment/questionnaires/status/');
+      console.log('Questionnaire status response:', response);
+      return response;
+    } catch (error) {
+      // If we get a 404, the investment module is not available
+      if (error.response && error.response.status === 404) {
+        console.log('Investment module is not available, returning default status');
+        // Return a default response that won't block the user
+        return {
+          isCompleted: false,
+          message: 'Investment module is currently under maintenance'
+        };
+      }
+      // For other errors, rethrow
+      throw error;
+    }
   } catch (error) {
     console.error('Error checking questionnaire status:', error);
     // If there's an error, assume questionnaire is not completed
-    return { isCompleted: false };
+    // But don't fail silently - log detailed error information
+    if (error.response) {
+      console.error('Error response:', error.response.status, error.response.data);
+    }
+    return {
+      isCompleted: false,
+      error: 'Could not check questionnaire status'
+    };
   }
 };
 
@@ -579,4 +683,4 @@ const api = {
 };
 
 // Export the API object as default
-export default api; 
+export default api;

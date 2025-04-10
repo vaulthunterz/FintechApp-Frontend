@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface BottomNavBarProps {
   currentRoute?: string;
@@ -10,6 +11,7 @@ interface BottomNavBarProps {
 
 const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentRoute }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   const navigateToHome = () => {
     router.push('/screens/home');
@@ -31,49 +33,67 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentRoute }) => {
 
   const isInvestmentActive = currentRoute?.includes('investment');
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.tabBarBackground,
+      borderTopColor: colors.border,
+    },
+    activeNavItem: {
+      borderTopColor: colors.tabBarActive,
+    },
+    navText: {
+      color: colors.tabBarInactive,
+    },
+    activeNavText: {
+      color: colors.tabBarActive,
+    }
+  };
+
   return (
     <View style={[
       styles.container,
+      dynamicStyles.container,
       { paddingBottom: Math.max(insets.bottom, 10) }
     ]}>
       <TouchableOpacity
-        style={[styles.navItem, isHomeActive && styles.activeNavItem]}
+        style={[styles.navItem, isHomeActive && [styles.activeNavItem, dynamicStyles.activeNavItem]]}
         onPress={navigateToHome}
       >
         <Ionicons
           name="home-outline"
           size={24}
-          color={isHomeActive ? "#1976d2" : "#555"}
+          color={isHomeActive ? colors.tabBarActive : colors.tabBarInactive}
         />
-        <Text style={[styles.navText, isHomeActive && styles.activeNavText]}>
+        <Text style={[styles.navText, dynamicStyles.navText, isHomeActive && [styles.activeNavText, dynamicStyles.activeNavText]]}>
           Home
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.navItem, isExpenseActive && styles.activeNavItem]}
+        style={[styles.navItem, isExpenseActive && [styles.activeNavItem, dynamicStyles.activeNavItem]]}
         onPress={navigateToExpenses}
       >
         <Ionicons
           name="wallet-outline"
           size={24}
-          color={isExpenseActive ? "#1976d2" : "#555"}
+          color={isExpenseActive ? colors.tabBarActive : colors.tabBarInactive}
         />
-        <Text style={[styles.navText, isExpenseActive && styles.activeNavText]}>
+        <Text style={[styles.navText, dynamicStyles.navText, isExpenseActive && [styles.activeNavText, dynamicStyles.activeNavText]]}>
           Expenses
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.navItem, isInvestmentActive && styles.activeNavItem]}
+        style={[styles.navItem, isInvestmentActive && [styles.activeNavItem, dynamicStyles.activeNavItem]]}
         onPress={navigateToInvestments}
       >
         <FontAwesome5
           name="chart-line"
           size={22}
-          color={isInvestmentActive ? "#1976d2" : "#555"}
+          color={isInvestmentActive ? colors.tabBarActive : colors.tabBarInactive}
         />
-        <Text style={[styles.navText, isInvestmentActive && styles.activeNavText]}>
+        <Text style={[styles.navText, dynamicStyles.navText, isInvestmentActive && [styles.activeNavText, dynamicStyles.activeNavText]]}>
           Investments
         </Text>
       </TouchableOpacity>
@@ -84,9 +104,7 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentRoute }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     paddingTop: 10,
     elevation: 8,
     shadowColor: '#000',
@@ -102,16 +120,13 @@ const styles = StyleSheet.create({
   },
   activeNavItem: {
     borderTopWidth: 3,
-    borderTopColor: '#1976d2',
     paddingTop: 5,
   },
   navText: {
     marginTop: 4,
     fontSize: 12,
-    color: '#555',
   },
   activeNavText: {
-    color: '#1976d2',
     fontWeight: 'bold',
   },
 });

@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Platform, Text } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import SettingsDrawer from './SettingsDrawer';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -18,6 +19,7 @@ const Header: React.FC<HeaderProps> = ({
   onMenuPress,
 }) => {
   const [settingsDrawerVisible, setSettingsDrawerVisible] = useState(false);
+  const { colors } = useTheme();
 
   const goBack = () => {
     router.back();
@@ -33,28 +35,38 @@ const Header: React.FC<HeaderProps> = ({
     setSettingsDrawerVisible(!settingsDrawerVisible);
   };
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    header: {
+      backgroundColor: colors.headerBackground,
+    },
+    headerText: {
+      color: colors.headerText,
+    }
+  };
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, dynamicStyles.header]}>
       {isRootScreen ? (
         <TouchableOpacity
           onPress={handleDrawerToggle}
           style={styles.menuButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="menu" size={24} color="white" />
+          <Ionicons name="menu" size={24} color={colors.headerText} />
         </TouchableOpacity>
       ) : showBackButton && (
         <TouchableOpacity onPress={goBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
+          <Ionicons name="arrow-back" size={24} color={colors.headerText} />
         </TouchableOpacity>
       )}
 
-      <Text style={styles.headerText}>FinTech App</Text>
+      <Text style={[styles.headerText, dynamicStyles.headerText]}>FinTech App</Text>
 
       <View style={styles.rightSection}>
         {showSettingsIcon && (
           <TouchableOpacity onPress={toggleSettingsDrawer} style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={24} color="white" />
+            <Ionicons name="settings-outline" size={24} color={colors.headerText} />
           </TouchableOpacity>
         )}
       </View>
@@ -70,7 +82,6 @@ const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#1e88e5',
     paddingTop: Platform.OS === 'android' ? 8 : 8,
     paddingBottom: 5,
     paddingHorizontal: 16,
@@ -87,7 +98,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   headerText: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,

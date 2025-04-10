@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import BarChartComponent from './charts/BarChartComponent';
 import AreaChartComponent from './charts/AreaChartComponent';
@@ -36,6 +37,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
   width = Dimensions.get('window').width - 40,
   showFilters = true
 }) => {
+  const { colors } = useTheme();
   const [selectedChart, setSelectedChart] = useState<ChartType>('line');
   const [availableCharts, setAvailableCharts] = useState<ChartType[]>(['line', 'bar', 'pie', 'donut']);
   const [filters, setFilters] = useState<FilterOptions>(getDefaultFilters());
@@ -198,20 +200,46 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
   // Chart configuration
   const chartConfig = {
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
+    backgroundColor: colors.card,
+    backgroundGradientFrom: colors.card,
+    backgroundGradientTo: colors.card,
     decimalPlaces: 2,
-    color: (opacity = 1) => `rgba(30, 136, 229, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1) => {
+      // Convert hex to rgba
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+      };
+
+      const rgb = hexToRgb(colors.primary);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
+    labelColor: (opacity = 1) => {
+      const rgb = hexToRgb(colors.text);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
     style: {
       borderRadius: 16,
     },
     propsForDots: {
       r: "6",
       strokeWidth: "2",
-      stroke: "#1e88e5",
+      stroke: colors.primary,
     },
+  };
+
+  // Helper function to convert hex to rgb
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
   };
 
   // Render the selected chart type
@@ -229,7 +257,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
       case 'pie':
         return pieData && pieData.length > 0 ? (
-          <View style={styles.chartContainer}>
+          <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
             <PieChart
               data={pieData}
               width={width}
@@ -289,7 +317,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       case 'line':
       default:
         return lineData ? (
-          <View style={styles.chartContainer}>
+          <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
             <LineChart
               data={lineData as any}
               width={width}
@@ -300,6 +328,19 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             />
           </View>
         ) : null;
+    }
+  };
+
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    noDataContainer: {
+      backgroundColor: colors.card,
+    },
+    noDataText: {
+      color: colors.textSecondary,
+    },
+    chartContainer: {
+      backgroundColor: colors.card,
     }
   };
 
@@ -322,8 +363,8 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       </View>
 
       {filteredData.length === 0 ? (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>No data available for the selected filters</Text>
+        <View style={[styles.noDataContainer, dynamicStyles.noDataContainer]}>
+          <Text style={[styles.noDataText, dynamicStyles.noDataText]}>No data available for the selected filters</Text>
         </View>
       ) : (
         renderChart()
@@ -343,17 +384,14 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f9f9f9',
     borderRadius: 10,
     marginVertical: 10,
   },
   noDataText: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
   },
   chartContainer: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginVertical: 10,

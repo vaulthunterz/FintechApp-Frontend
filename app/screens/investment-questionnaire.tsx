@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
   Platform,
   ActivityIndicator,
   Switch
@@ -13,29 +13,45 @@ import {
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import api from '../services/api';
 
 // Step component
 const StepIndicator = ({ steps, currentStep }: { steps: string[], currentStep: number }) => {
+  const { colors } = useTheme();
+
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    activeStep: {
+      backgroundColor: colors.primary,
+    },
+    inactiveStep: {
+      backgroundColor: colors.border,
+    },
+    stepNumber: {
+      color: colors.headerText,
+    }
+  };
+
   return (
     <View style={styles.stepperContainer}>
       {steps.map((step, index) => (
         <View key={index} style={styles.stepWrapper}>
-          <View 
+          <View
             style={[
-              styles.stepDot, 
-              index <= currentStep ? styles.activeStep : styles.inactiveStep
-            ]} 
+              styles.stepDot,
+              index <= currentStep ? [styles.activeStep, dynamicStyles.activeStep] : [styles.inactiveStep, dynamicStyles.inactiveStep]
+            ]}
           >
-            <Text style={styles.stepNumber}>{index + 1}</Text>
+            <Text style={[styles.stepNumber, dynamicStyles.stepNumber]}>{index + 1}</Text>
           </View>
           {index < steps.length - 1 && (
-            <View 
+            <View
               style={[
-                styles.stepLine, 
-                index < currentStep ? styles.activeStep : styles.inactiveStep
-              ]} 
+                styles.stepLine,
+                index < currentStep ? [styles.activeStep, dynamicStyles.activeStep] : [styles.inactiveStep, dynamicStyles.inactiveStep]
+              ]}
             />
           )}
         </View>
@@ -59,28 +75,28 @@ interface FormData {
   monthly_savings_range: string;
   emergency_fund_months: string;
   debt_situation: string;
-  
+
   // Investment Goals
   primary_goal: string;
   investment_timeframe: string;
   monthly_investment: string;
-  
+
   // Risk Assessment
   market_drop_reaction: string;
   investment_preference: string;
   loss_tolerance: string;
   risk_comfort_scenario: string;
-  
+
   // Investment Knowledge & Experience
   investment_knowledge: string;
   investment_experience_years: string;
   previous_investments: string[];
-  
+
   // Investment Preferences
   preferred_investment_types: string[];
   ethical_preferences: string[];
   sector_preferences: string[];
-  
+
   // Additional Information
   financial_dependents: string;
   income_stability: string;
@@ -91,6 +107,7 @@ const InvestmentQuestionnaire = () => {
   const params = useLocalSearchParams();
   const isPostSignup = params.isPostSignup === 'true';
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -99,28 +116,28 @@ const InvestmentQuestionnaire = () => {
     monthly_savings_range: '',
     emergency_fund_months: '',
     debt_situation: '',
-    
+
     // Investment Goals
     primary_goal: '',
     investment_timeframe: '',
     monthly_investment: '',
-    
+
     // Risk Assessment
     market_drop_reaction: '',
     investment_preference: '',
     loss_tolerance: '',
     risk_comfort_scenario: '',
-    
+
     // Investment Knowledge & Experience
     investment_knowledge: '',
     investment_experience_years: '',
     previous_investments: [],
-    
+
     // Investment Preferences
     preferred_investment_types: [],
     ethical_preferences: [],
     sector_preferences: [],
-    
+
     // Additional Information
     financial_dependents: '',
     income_stability: '',
@@ -131,9 +148,11 @@ const InvestmentQuestionnaire = () => {
   useEffect(() => {
     const checkQuestionnaireStatus = async () => {
       try {
+        console.log('Checking questionnaire status...');
         // Check if questionnaire has been completed using API
         const response = await api.checkQuestionnaireStatus();
-        
+        console.log('Questionnaire status check result:', response);
+
         if (response.isCompleted && isPostSignup) {
           Toast.show({
             type: 'info',
@@ -142,8 +161,23 @@ const InvestmentQuestionnaire = () => {
           });
           router.replace('/');
         }
+
+        // If we got a maintenance message, show it to the user
+        if (response.message === 'Investment module is currently under maintenance') {
+          Toast.show({
+            type: 'info',
+            text1: 'Investment Module',
+            text2: 'Investment features are currently under maintenance'
+          });
+        }
       } catch (error) {
-        console.error('Error checking questionnaire status:', error);
+        console.error('Error in component when checking questionnaire status:', error);
+        // Show a toast but continue with the questionnaire
+        Toast.show({
+          type: 'error',
+          text1: 'Connection issue',
+          text2: 'Proceeding with questionnaire setup'
+        });
       }
     };
 
@@ -169,19 +203,45 @@ const InvestmentQuestionnaire = () => {
     setLoading(true);
     try {
       // Submit questionnaire data using the API
-      await api.submitQuestionnaire(formData);
-      
-      Toast.show({
-        type: 'success',
-        text1: 'Success!',
-        text2: 'Investment questionnaire submitted successfully!'
-      });
-      
+      const response = await api.submitQuestionnaire(formData);
+
+      // Check if we got a maintenance response
+      if (response.status === 'maintenance') {
+        Toast.show({
+          type: 'info',
+          text1: 'Questionnaire Saved',
+          text2: 'Investment features are currently under maintenance, but your preferences have been saved.'
+        });
+      } else {
+        Toast.show({
+          type: 'success',
+          text1: 'Success!',
+          text2: 'Investment questionnaire submitted successfully!'
+        });
+
+        // Force refresh of questionnaire status and profile data in the app
+        try {
+          // This will update the status in the API cache
+          await Promise.all([
+            api.checkQuestionnaireStatus(),
+            api.fetchUserProfiles()
+          ]);
+
+          console.log('Successfully refreshed profile and questionnaire data');
+        } catch (error) {
+          console.error('Error refreshing profile data:', error);
+          // Non-critical error, don't show to user
+        }
+      }
+
       // Navigate based on context
       if (isPostSignup) {
         router.replace('/');
       } else {
-        router.back();
+        // Add a small delay to ensure data is refreshed before navigating back
+        setTimeout(() => {
+          router.back();
+        }, 500);
       }
     } catch (error) {
       console.error('Error submitting questionnaire:', error);
@@ -198,52 +258,56 @@ const InvestmentQuestionnaire = () => {
   const renderFinancialSituation = () => {
     return (
       <View style={styles.formGroup}>
-        <Text style={styles.sectionTitle}>Understanding Your Financial Situation</Text>
-        <Text style={styles.sectionDescription}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Understanding Your Financial Situation</Text>
+        <Text style={[styles.sectionDescription, dynamicStyles.sectionDescription]}>
           Let's start by understanding your current financial situation. This helps us provide recommendations that fit your circumstances.
         </Text>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>What is your annual income range?</Text>
-          <Text style={styles.helpText}>Include all sources of income (salary, bonuses, etc.)</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>What is your annual income range?</Text>
+          <Text style={[styles.helpText, dynamicStyles.helpText]}>Include all sources of income (salary, bonuses, etc.)</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.annual_income_range}
               onValueChange={(value) => handleChange('annual_income_range', value)}
               style={styles.picker}
+              dropdownIconColor={colors.text}
+              itemStyle={{ color: colors.text }}
             >
-              <Picker.Item label="Select your income range" value="" />
-              <Picker.Item label="Less than $30,000" value="0-30000" />
-              <Picker.Item label="$30,000 - $50,000" value="30000-50000" />
-              <Picker.Item label="$50,000 - $80,000" value="50000-80000" />
-              <Picker.Item label="$80,000 - $120,000" value="80000-120000" />
-              <Picker.Item label="More than $120,000" value="120000+" />
+              <Picker.Item label="Select your income range" value="" color={colors.text} />
+              <Picker.Item label="Less than $30,000" value="0-30000" color={colors.text} />
+              <Picker.Item label="$30,000 - $50,000" value="30000-50000" color={colors.text} />
+              <Picker.Item label="$50,000 - $80,000" value="50000-80000" color={colors.text} />
+              <Picker.Item label="$80,000 - $120,000" value="80000-120000" color={colors.text} />
+              <Picker.Item label="More than $120,000" value="120000+" color={colors.text} />
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>How much can you save monthly?</Text>
-          <Text style={styles.helpText}>This helps us understand your investment capacity</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>How much can you save monthly?</Text>
+          <Text style={[styles.helpText, dynamicStyles.helpText]}>This helps us understand your investment capacity</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.monthly_savings_range}
               onValueChange={(value) => handleChange('monthly_savings_range', value)}
               style={styles.picker}
+              dropdownIconColor={colors.text}
+              itemStyle={{ color: colors.text }}
             >
-              <Picker.Item label="Select your monthly savings" value="" />
-              <Picker.Item label="Less than $200" value="0-200" />
-              <Picker.Item label="$200 - $500" value="200-500" />
-              <Picker.Item label="$500 - $1,000" value="500-1000" />
-              <Picker.Item label="$1,000 - $2,000" value="1000-2000" />
-              <Picker.Item label="More than $2,000" value="2000+" />
+              <Picker.Item label="Select your monthly savings" value="" color={colors.text} />
+              <Picker.Item label="Less than $200" value="0-200" color={colors.text} />
+              <Picker.Item label="$200 - $500" value="200-500" color={colors.text} />
+              <Picker.Item label="$500 - $1,000" value="500-1000" color={colors.text} />
+              <Picker.Item label="$1,000 - $2,000" value="1000-2000" color={colors.text} />
+              <Picker.Item label="More than $2,000" value="2000+" color={colors.text} />
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>How much emergency savings do you have?</Text>
-          <Text style={styles.helpText}>Emergency funds help you handle unexpected expenses</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>How much emergency savings do you have?</Text>
+          <Text style={[styles.helpText, dynamicStyles.helpText]}>Emergency funds help you handle unexpected expenses</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.emergency_fund_months}
@@ -259,10 +323,10 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>What is your current debt situation?</Text>
-          <Text style={styles.helpText}>Consider all types of debt (credit cards, loans, mortgages)</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>What is your current debt situation?</Text>
+          <Text style={[styles.helpText, dynamicStyles.helpText]}>Consider all types of debt (credit cards, loans, mortgages)</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.debt_situation}
@@ -289,7 +353,7 @@ const InvestmentQuestionnaire = () => {
         <Text style={styles.sectionDescription}>
           Understanding your goals helps us recommend the most suitable investment options for you.
         </Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>What is your main financial goal?</Text>
           <Text style={styles.helpText}>Choose the goal that's most important to you right now</Text>
@@ -298,8 +362,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.primary_goal}
               onValueChange={(value) => handleChange('primary_goal', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your main goal" value="" />
+              <Picker.Item label="Select your main goal" value="" color="white" />
               <Picker.Item label="Planning for retirement" value="retirement" />
               <Picker.Item label="Saving for education" value="education" />
               <Picker.Item label="Buying a home" value="home" />
@@ -311,7 +377,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>How long do you plan to keep your money invested?</Text>
           <Text style={styles.helpText}>This helps determine suitable investment options</Text>
@@ -320,8 +386,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.investment_timeframe}
               onValueChange={(value) => handleChange('investment_timeframe', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your investment timeframe" value="" />
+              <Picker.Item label="Select your investment timeframe" value="" color="white" />
               <Picker.Item label="Less than 1 year" value="very_short" />
               <Picker.Item label="1-3 years" value="short" />
               <Picker.Item label="3-5 years" value="medium" />
@@ -330,7 +398,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>How much can you invest monthly?</Text>
           <Text style={styles.helpText}>Regular investing helps build wealth over time</Text>
@@ -339,8 +407,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.monthly_investment}
               onValueChange={(value) => handleChange('monthly_investment', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select monthly investment amount" value="" />
+              <Picker.Item label="Select monthly investment amount" value="" color="white" />
               <Picker.Item label="Less than $100" value="0-100" />
               <Picker.Item label="$100 - $300" value="100-300" />
               <Picker.Item label="$300 - $500" value="300-500" />
@@ -360,7 +430,7 @@ const InvestmentQuestionnaire = () => {
         <Text style={styles.sectionDescription}>
           These questions help us understand how comfortable you are with investment risk. There are no right or wrong answers!
         </Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>If your investments suddenly dropped in value, what would you do?</Text>
           <Text style={styles.helpText}>This helps us understand your reaction to market changes</Text>
@@ -369,8 +439,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.market_drop_reaction}
               onValueChange={(value) => handleChange('market_drop_reaction', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your likely reaction" value="" />
+              <Picker.Item label="Select your likely reaction" value="" color="white" />
               <Picker.Item label="Sell all investments immediately" value="sell_all" />
               <Picker.Item label="Sell some investments" value="sell_some" />
               <Picker.Item label="Do nothing and wait it out" value="do_nothing" />
@@ -379,7 +451,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Which investment approach appeals to you most?</Text>
           <Text style={styles.helpText}>Different approaches balance safety and growth potential</Text>
@@ -388,8 +460,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.investment_preference}
               onValueChange={(value) => handleChange('investment_preference', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your preferred approach" value="" />
+              <Picker.Item label="Select your preferred approach" value="" color="white" />
               <Picker.Item label="Guaranteed returns with no risk" value="very_safe" />
               <Picker.Item label="Mostly safe investments with some growth potential" value="conservative" />
               <Picker.Item label="Mix of safe and growth investments" value="balanced" />
@@ -398,7 +472,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>What level of investment loss could you tolerate in a year?</Text>
           <Text style={styles.helpText}>Consider your comfort with temporary market declines</Text>
@@ -407,8 +481,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.loss_tolerance}
               onValueChange={(value) => handleChange('loss_tolerance', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your loss tolerance" value="" />
+              <Picker.Item label="Select your loss tolerance" value="" color="white" />
               <Picker.Item label="Less than 5% loss" value="0-5" />
               <Picker.Item label="5% - 10% loss" value="5-10" />
               <Picker.Item label="10% - 20% loss" value="10-20" />
@@ -417,7 +493,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Which investment scenario are you most comfortable with?</Text>
           <Text style={styles.helpText}>Each scenario shows potential gains and losses</Text>
@@ -426,8 +502,10 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.risk_comfort_scenario}
               onValueChange={(value) => handleChange('risk_comfort_scenario', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select a scenario" value="" />
+              <Picker.Item label="Select a scenario" value="" color="white" />
               <Picker.Item label="Potential gain: 5%, Potential loss: 2%" value="scenario_1" />
               <Picker.Item label="Potential gain: 10%, Potential loss: 5%" value="scenario_2" />
               <Picker.Item label="Potential gain: 20%, Potential loss: 12%" value="scenario_3" />
@@ -447,7 +525,7 @@ const InvestmentQuestionnaire = () => {
         <Text style={styles.sectionDescription}>
           Tell us about your familiarity with investments. This helps us provide appropriate guidance and recommendations.
         </Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>How would you describe your investment knowledge?</Text>
           <Text style={styles.helpText}>Be honest - we'll explain everything you need to know</Text>
@@ -456,17 +534,19 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.investment_knowledge}
               onValueChange={(value) => handleChange('investment_knowledge', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your knowledge level" value="" />
-              <Picker.Item label="No knowledge or experience" value="none" />
-              <Picker.Item label="Basic understanding of savings accounts and fixed deposits" value="basic" />
-              <Picker.Item label="Familiar with stocks and mutual funds" value="moderate" />
-              <Picker.Item label="Good understanding of various investment products" value="good" />
-              <Picker.Item label="Expert knowledge of financial markets" value="expert" />
+              <Picker.Item label="Select your knowledge level" value="" color="white" />
+              <Picker.Item label="No knowledge or experience" value="none" color="white" />
+              <Picker.Item label="Basic understanding of savings accounts and fixed deposits" value="basic" color="white" />
+              <Picker.Item label="Familiar with stocks and mutual funds" value="moderate" color="white" />
+              <Picker.Item label="Good understanding of various investment products" value="good" color="white" />
+              <Picker.Item label="Expert knowledge of financial markets" value="expert" color="white" />
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>How long have you been investing?</Text>
           <Text style={styles.helpText}>Include all types of investments</Text>
@@ -475,17 +555,19 @@ const InvestmentQuestionnaire = () => {
               selectedValue={formData.investment_experience_years}
               onValueChange={(value) => handleChange('investment_experience_years', value)}
               style={styles.picker}
+              dropdownIconColor="white"
+              itemStyle={{ color: 'white' }}
             >
-              <Picker.Item label="Select your experience" value="" />
-              <Picker.Item label="No experience" value="none" />
-              <Picker.Item label="Less than 2 years" value="0-2" />
-              <Picker.Item label="2-5 years" value="2-5" />
-              <Picker.Item label="5-10 years" value="5-10" />
-              <Picker.Item label="More than 10 years" value="10+" />
+              <Picker.Item label="Select your experience" value="" color="white" />
+              <Picker.Item label="No experience" value="none" color="white" />
+              <Picker.Item label="Less than 2 years" value="0-2" color="white" />
+              <Picker.Item label="2-5 years" value="2-5" color="white" />
+              <Picker.Item label="5-10 years" value="5-10" color="white" />
+              <Picker.Item label="More than 10 years" value="10+" color="white" />
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Which investments have you used before?</Text>
           <Text style={styles.helpText}>Select all that apply</Text>
@@ -540,7 +622,7 @@ const InvestmentQuestionnaire = () => {
         <Text style={styles.sectionDescription}>
           Tell us about your investment interests and values. This helps us recommend investments that align with your preferences.
         </Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>What types of investments interest you?</Text>
           <Text style={styles.helpText}>Select all that you'd like to learn more about</Text>
@@ -578,7 +660,7 @@ const InvestmentQuestionnaire = () => {
             ))}
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Do you have any ethical investment preferences?</Text>
           <Text style={styles.helpText}>Select causes you'd like your investments to support</Text>
@@ -621,7 +703,7 @@ const InvestmentQuestionnaire = () => {
             ))}
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Which business sectors interest you?</Text>
           <Text style={styles.helpText}>Select sectors you'd like to invest in</Text>
@@ -676,7 +758,7 @@ const InvestmentQuestionnaire = () => {
         <Text style={styles.sectionDescription}>
           These final questions help us provide more personalized recommendations.
         </Text>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Do you have any financial dependents?</Text>
           <Text style={styles.helpText}>People who rely on your financial support</Text>
@@ -694,7 +776,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>How stable is your income?</Text>
           <Text style={styles.helpText}>Consider your job security and income predictability</Text>
@@ -713,7 +795,7 @@ const InvestmentQuestionnaire = () => {
             </Picker>
           </View>
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Do you have any major expenses planned?</Text>
           <Text style={styles.helpText}>Select all that apply in the next 5 years</Text>
@@ -776,59 +858,120 @@ const InvestmentQuestionnaire = () => {
       case 5:
         return renderAdditionalInformation();
       default:
-        return <Text>Unknown step</Text>;
+        return <Text style={{ color: colors.text }}>Unknown step</Text>;
     }
   };
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.background,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    title: {
+      color: colors.text,
+    },
+    sectionTitle: {
+      color: colors.text,
+    },
+    sectionDescription: {
+      color: colors.text,
+    },
+    label: {
+      color: colors.text,
+    },
+    helpText: {
+      color: colors.textSecondary,
+    },
+    pickerContainer: {
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    input: {
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      color: colors.text,
+    },
+    button: {
+      backgroundColor: colors.primary,
+    },
+    buttonDisabled: {
+      backgroundColor: colors.border,
+    },
+    buttonText: {
+      color: colors.headerText,
+    },
+    backButton: {
+      backgroundColor: 'transparent',
+      borderColor: colors.primary,
+    },
+    backButtonText: {
+      color: colors.primary,
+    },
+    checkbox: {
+      borderColor: colors.border,
+    },
+    checkboxSelected: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    checkboxLabel: {
+      color: 'white',
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <Stack.Screen
         options={{
           title: 'Investment Questionnaire',
           headerTitleStyle: { fontWeight: 'bold' }
         }}
       />
-      
+
       <ScrollView style={styles.scrollView}>
-        <View style={styles.card}>
-          <Text style={styles.title}>
+        <View style={[styles.card, dynamicStyles.card]}>
+          <Text style={[styles.title, dynamicStyles.title]}>
             {isPostSignup ? "Complete Your Profile" : "Investment Questionnaire"}
           </Text>
-          
+
           <StepIndicator steps={steps} currentStep={activeStep} />
-          
+
           {getStepContent(activeStep)}
-          
+
           <View style={styles.buttonsContainer}>
             <View style={styles.buttonRow}>
               {activeStep > 0 && (
                 <TouchableOpacity
-                  style={[styles.button, styles.backButton]}
+                  style={[styles.button, styles.backButton, dynamicStyles.backButton]}
                   onPress={handleBack}
                   disabled={loading}
                 >
-                  <Text style={styles.backButtonText}>Back</Text>
+                  <Text style={[styles.backButtonText, dynamicStyles.backButtonText]}>Back</Text>
                 </TouchableOpacity>
               )}
-              
+
               {activeStep < steps.length - 1 ? (
                 <TouchableOpacity
-                  style={[styles.button, styles.nextButton]}
+                  style={[styles.button, styles.nextButton, dynamicStyles.button]}
                   onPress={handleNext}
                   disabled={loading}
                 >
-                  <Text style={styles.buttonText}>Next</Text>
+                  <Text style={[styles.buttonText, dynamicStyles.buttonText]}>Next</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={[styles.button, styles.submitButton, loading && styles.disabledButton]}
+                  style={[styles.button, styles.submitButton, dynamicStyles.button, loading && dynamicStyles.buttonDisabled]}
                   onPress={handleSubmit}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={colors.headerText} />
                   ) : (
-                    <Text style={styles.buttonText}>Submit</Text>
+                    <Text style={[styles.buttonText, dynamicStyles.buttonText]}>Submit</Text>
                   )}
                 </TouchableOpacity>
               )}
@@ -843,7 +986,6 @@ const InvestmentQuestionnaire = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
@@ -851,7 +993,6 @@ const styles = StyleSheet.create({
   card: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#fff',
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -864,7 +1005,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
-    color: '#333',
   },
   stepperContainer: {
     flexDirection: 'row',
@@ -890,13 +1030,12 @@ const styles = StyleSheet.create({
     height: 2,
   },
   activeStep: {
-    backgroundColor: '#1976d2',
+    // Colors provided by dynamic styles
   },
   inactiveStep: {
-    backgroundColor: '#bbdefb',
+    // Colors provided by dynamic styles
   },
   stepNumber: {
-    color: 'white',
     fontWeight: 'bold',
   },
   formGroup: {
@@ -906,11 +1045,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#333',
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -920,27 +1057,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     marginBottom: 8,
-    color: '#555',
   },
   helpText: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 8,
     fontStyle: 'italic',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#f9f9f9',
     fontSize: 16,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     ...Platform.select({
       ios: {
         marginBottom: 0,
@@ -974,26 +1105,21 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#1976d2',
   },
   nextButton: {
-    backgroundColor: '#1976d2',
     marginLeft: 'auto',
   },
   submitButton: {
-    backgroundColor: '#2e7d32',
     marginLeft: 'auto',
   },
   disabledButton: {
-    backgroundColor: '#b0bec5',
+    // Colors provided by dynamic styles
   },
   buttonText: {
-    color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
   backButtonText: {
-    color: '#1976d2',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -1009,18 +1135,16 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderWidth: 2,
-    borderColor: '#1976d2',
     borderRadius: 4,
     marginRight: 10,
   },
   checkboxSelected: {
-    backgroundColor: '#1976d2',
+    // Colors provided by dynamic styles
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#333',
     flex: 1,
   },
 });
 
-export default InvestmentQuestionnaire; 
+export default InvestmentQuestionnaire;

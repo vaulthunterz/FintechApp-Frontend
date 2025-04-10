@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { VictoryBar, VictoryChart, VictoryTheme, VictoryAxis, VictoryLabel } from 'victory-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BarChartProps {
   data: Array<{ x: string; y: number }>;
@@ -21,9 +22,21 @@ const BarChartComponent: React.FC<BarChartProps> = ({
   xAxisLabel = '',
   colors = ['#1976d2']
 }) => {
+  const { colors: themeColors } = useTheme();
+
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.card,
+    },
+    title: {
+      color: themeColors.text,
+    }
+  };
+
   return (
-    <View style={[styles.container, { width }]}>
-      <Text style={styles.title}>{title}</Text>
+    <View style={[styles.container, dynamicStyles.container, { width }]}>
+      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
       <VictoryChart
         width={width}
         height={height}
@@ -70,7 +83,6 @@ const BarChartComponent: React.FC<BarChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginVertical: 10,

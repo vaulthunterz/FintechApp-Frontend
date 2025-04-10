@@ -12,6 +12,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import Toast from "react-native-toast-message";
 import api from "../services/api";
 import Header from "../components/Header";
@@ -35,6 +36,7 @@ interface Transaction {
 
 const TransactionsScreen = () => {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,16 @@ const TransactionsScreen = () => {
   const [isFromDatePickerVisible, setFromDatePickerVisible] = useState(false);
   const [isToDatePickerVisible, setToDatePickerVisible] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // Pagination state
+  const [paginationInfo, setPaginationInfo] = useState<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    totalPages: number;
+    currentPage: number;
+    pageTotalAmount?: number;
+  }>({ count: 0, next: null, previous: null, totalPages: 1, currentPage: 1 });
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -81,26 +93,43 @@ const TransactionsScreen = () => {
     }
   }, [searchQuery, fromDate, toDate, transactions]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (page?: number) => {
     try {
       setLoading(true);
-      const response = await api.fetchTransactions();
+      const response = await api.fetchTransactions(page);
 
-      // Process and normalize transaction data
-      const normalizedTransactions = response.map((transaction: any) => ({
-        id: transaction.id,
-        amount: transaction.amount,
-        description: transaction.description || '',
-        category: transaction.category || { id: '', name: 'Uncategorized' },
-        date: transaction.date || new Date().toISOString().split('T')[0],
-        isExpense: transaction.is_expense,
-        merchant_name: transaction.merchant_name || '',
-        time_of_transaction: transaction.time_of_transaction || '',
-      }));
+      // Check if response has data property
+      if (response && response.data) {
+        // Process and normalize transaction data
+        const normalizedTransactions = response.data.map((transaction: any) => ({
+          id: transaction.id,
+          amount: transaction.amount,
+          description: transaction.description || '',
+          category: transaction.category || { id: '', name: 'Uncategorized' },
+          date: transaction.date || new Date().toISOString().split('T')[0],
+          isExpense: transaction.is_expense,
+          merchant_name: transaction.merchant_name || '',
+          time_of_transaction: transaction.time_of_transaction || '',
+        }));
 
-      setTransactions(normalizedTransactions);
-      setFilteredTransactions(normalizedTransactions);
-      console.log(`Loaded ${normalizedTransactions.length} transactions`);
+        setTransactions(normalizedTransactions);
+        setFilteredTransactions(normalizedTransactions);
+        console.log(`Loaded ${normalizedTransactions.length} transactions`);
+
+        // Update pagination info if available
+        if (response.pagination) {
+          setPaginationInfo(response.pagination);
+          console.log('Pagination info:', response.pagination);
+        }
+      } else {
+        console.error("Unexpected response format:", response);
+        Toast.show({
+          type: "error",
+          text1: "Data Error",
+          text2: "Received unexpected data format from server.",
+          position: "bottom",
+        });
+      }
     } catch (error) {
       console.error("Error fetching transactions:", error);
       Toast.show({
@@ -207,25 +236,25 @@ const TransactionsScreen = () => {
 
     return (
       <TouchableOpacity
-        style={styles.transactionItem}
+        style={[styles.transactionItem, dynamicStyles.transactionItem]}
         onPress={() => {
           // Navigate to transaction details
           router.push(`/screens/edit-transaction?id=${item.id}`);
         }}
       >
         <View style={styles.transactionInfo}>
-          <Text style={styles.transactionDescription}>{item.description}</Text>
-          <Text style={styles.transactionCategory}>
+          <Text style={[styles.transactionDescription, dynamicStyles.transactionDescription]}>{item.description}</Text>
+          <Text style={[styles.transactionCategory, dynamicStyles.transactionCategory]}>
             {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
           </Text>
-          <Text style={styles.transactionDate}>
+          <Text style={[styles.transactionDate, dynamicStyles.transactionDate]}>
             {formatDate(item.date || item.time_of_transaction)}
           </Text>
         </View>
         <Text
           style={[
             styles.transactionAmount,
-            item.isExpense ? styles.expenseAmount : styles.incomeAmount,
+            { color: item.isExpense ? colors.error : colors.success },
           ]}
         >
           {item.isExpense ? "-" : "+"}${parseFloat(String(item.amount)).toFixed(2)}
@@ -238,45 +267,95 @@ const TransactionsScreen = () => {
     setDrawerVisible(!drawerVisible);
   };
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.background,
+    },
+    screenTitle: {
+      color: colors.text,
+    },
+    filterContainer: {
+      backgroundColor: colors.card,
+    },
+    searchInput: {
+      backgroundColor: colors.card,
+      color: colors.text,
+      borderColor: colors.border,
+    },
+    datePickerButton: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    datePickerButtonText: {
+      color: colors.text,
+    },
+    transactionItem: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+    transactionDescription: {
+      color: colors.text,
+    },
+    transactionCategory: {
+      color: colors.textSecondary,
+    },
+    transactionDate: {
+      color: colors.textSecondary,
+    },
+    paginationText: {
+      color: colors.text,
+    },
+    paginationButton: {
+      backgroundColor: colors.primary,
+    },
+    paginationButtonText: {
+      color: colors.headerText,
+    },
+    emptyStateText: {
+      color: colors.textSecondary,
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       <Header showBackButton={true} isRootScreen={true} onMenuPress={toggleDrawer} />
       <DrawerMenu isVisible={drawerVisible} onClose={toggleDrawer} />
 
       <View style={styles.titleContainer}>
-        <Text style={styles.screenTitle}>Transactions</Text>
+        <Text style={[styles.screenTitle, dynamicStyles.screenTitle]}>Transactions</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={navigateToAddTransaction}
         >
-          <Ionicons name="add-circle" size={24} color="#1e88e5" />
+          <Ionicons name="add-circle" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, dynamicStyles.filterContainer]}>
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, dynamicStyles.searchInput]}
           placeholder="Search transactions..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.textSecondary}
         />
 
         <View style={styles.dateFiltersContainer}>
           <TouchableOpacity
-            style={styles.datePickerButton}
+            style={[styles.datePickerButton, dynamicStyles.datePickerButton]}
             onPress={showFromDatePicker}
           >
-            <Text style={styles.datePickerButtonText}>
+            <Text style={[styles.datePickerButtonText, dynamicStyles.datePickerButtonText]}>
               {fromDate ? format(fromDate, 'MMM dd, yyyy') : 'From Date'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.datePickerButton}
+            style={[styles.datePickerButton, dynamicStyles.datePickerButton]}
             onPress={showToDatePicker}
           >
-            <Text style={styles.datePickerButtonText}>
+            <Text style={[styles.datePickerButtonText, dynamicStyles.datePickerButtonText]}>
               {toDate ? format(toDate, 'MMM dd, yyyy') : 'To Date'}
             </Text>
           </TouchableOpacity>
@@ -289,7 +368,7 @@ const TransactionsScreen = () => {
                 setToDate(null);
               }}
             >
-              <Ionicons name="close-circle-outline" size={20} color="#f44336" />
+              <Ionicons name="close-circle-outline" size={20} color={colors.error} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -299,6 +378,7 @@ const TransactionsScreen = () => {
             value={fromDate || new Date()}
             mode="date"
             onChange={handleFromDateChange}
+            themeVariant={isDark ? 'dark' : 'light'}
           />
         )}
 
@@ -307,30 +387,56 @@ const TransactionsScreen = () => {
             value={toDate || new Date()}
             mode="date"
             onChange={handleToDateChange}
+            themeVariant={isDark ? 'dark' : 'light'}
           />
         )}
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1e88e5" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : filteredTransactions.length > 0 ? (
-        <FlatList
-          data={filteredTransactions}
-          keyExtractor={(item) => item.id}
-          renderItem={renderTransactionItem}
-          contentContainerStyle={styles.listContent}
-        />
+        <>
+          <FlatList
+            data={filteredTransactions}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTransactionItem}
+            contentContainerStyle={styles.listContent}
+          />
+
+          {/* Pagination Controls */}
+          <View style={styles.paginationContainer}>
+            <TouchableOpacity
+              style={[styles.paginationButton, dynamicStyles.paginationButton, paginationInfo.previous === null && styles.paginationButtonDisabled]}
+              onPress={() => paginationInfo.previous && fetchTransactions(paginationInfo.currentPage - 1)}
+              disabled={paginationInfo.previous === null}
+            >
+              <Text style={[styles.paginationButtonText, dynamicStyles.paginationButtonText]}>Previous</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.paginationText, dynamicStyles.paginationText]}>
+              Page {paginationInfo.currentPage} of {paginationInfo.totalPages} ({paginationInfo.count} total)
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.paginationButton, dynamicStyles.paginationButton, paginationInfo.next === null && styles.paginationButtonDisabled]}
+              onPress={() => paginationInfo.next && fetchTransactions(paginationInfo.currentPage + 1)}
+              disabled={paginationInfo.next === null}
+            >
+              <Text style={[styles.paginationButtonText, dynamicStyles.paginationButtonText]}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        </>
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={60} color="#ccc" />
-          <Text style={styles.emptyText}>No transactions yet</Text>
+          <Ionicons name="receipt-outline" size={60} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, dynamicStyles.emptyStateText]}>No transactions yet</Text>
           <TouchableOpacity
-            style={styles.addTransactionButton}
+            style={[styles.addTransactionButton, { backgroundColor: colors.primary }]}
             onPress={navigateToAddTransaction}
           >
-            <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+            <Text style={[styles.addTransactionButtonText, { color: colors.headerText }]}>Add Transaction</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -342,7 +448,6 @@ const TransactionsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   titleContainer: {
     flexDirection: "row",
@@ -354,7 +459,6 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#333",
   },
   addButton: {
     padding: 5,
@@ -371,7 +475,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
@@ -387,11 +490,9 @@ const styles = StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#333",
   },
   transactionCategory: {
     fontSize: 14,
-    color: "#666",
     marginTop: 4,
   },
   transactionAmount: {
@@ -412,24 +513,20 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: "#666",
     marginTop: 10,
     marginBottom: 20,
   },
   addTransactionButton: {
-    backgroundColor: "#1e88e5",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
   },
   addTransactionButtonText: {
-    color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
   },
   filterContainer: {
     padding: 16,
-    backgroundColor: 'white',
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -442,12 +539,10 @@ const styles = StyleSheet.create({
   searchInput: {
     height: 40,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 14,
     marginBottom: 12,
-    color: '#333',
   },
   dateFiltersContainer: {
     flexDirection: 'row',
@@ -459,7 +554,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -468,15 +562,37 @@ const styles = StyleSheet.create({
   },
   datePickerButtonText: {
     fontSize: 14,
-    color: '#666',
   },
   clearFiltersButton: {
     padding: 8,
   },
   transactionDate: {
     fontSize: 14,
-    color: "#666",
     marginTop: 4,
+  },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  paginationButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  paginationText: {
+    fontSize: 14,
   },
 });
 

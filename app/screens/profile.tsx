@@ -1,19 +1,24 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTheme } from '../contexts/ThemeContext';
 import Profile from '../components/profile/Profile';
 
 const ProfileScreen = () => {
+  const params = useLocalSearchParams();
+  const isInvestmentPortfolio = params.source === 'investment';
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
-          title: 'User Profile',
+          title: isInvestmentPortfolio ? 'Investment Portfolio' : 'User Profile',
           headerTitleStyle: { fontWeight: 'bold' }
         }}
       />
-      
-      <Profile />
+
+      <Profile isInvestmentPortfolio={isInvestmentPortfolio} />
     </View>
   );
 };
@@ -21,8 +26,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
 });
 
-export default ProfileScreen; 
+export default ProfileScreen;

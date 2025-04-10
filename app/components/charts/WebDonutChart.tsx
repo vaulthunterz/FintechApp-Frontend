@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface DonutChartProps {
   data: Array<{ x: string; y: number }>;
@@ -17,34 +18,80 @@ const WebDonutChart: React.FC<DonutChartProps> = ({
   height = 300,
   colors = ['#1976d2', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#795548']
 }) => {
+  const { colors: themeColors, isDark } = useTheme();
   // Format data for PieChart component
   const pieData = data.map((item, index) => ({
     name: item.x,
     population: item.y, // Using 'population' as the value key for PieChart
     color: colors[index % colors.length],
-    legendFontColor: '#7F7F7F',
+    legendFontColor: themeColors.textSecondary,
     legendFontSize: 12
   }));
 
   // Chart configuration
   const chartConfig = {
-    backgroundColor: '#fff',
-    backgroundGradientFrom: '#fff',
-    backgroundGradientTo: '#fff',
+    backgroundColor: themeColors.card,
+    backgroundGradientFrom: themeColors.card,
+    backgroundGradientTo: themeColors.card,
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1) => {
+      // Convert hex to rgba
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+      };
+
+      const rgb = hexToRgb(themeColors.text);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
+    labelColor: (opacity = 1) => {
+      const rgb = hexToRgb(themeColors.text);
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+    },
     style: {
       borderRadius: 16,
     },
   };
 
+  // Helper function to convert hex to rgb
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  };
+
   // Calculate total for percentage
   const total = data.reduce((sum, item) => sum + item.y, 0);
 
+  // Create dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.card,
+    },
+    title: {
+      color: themeColors.text,
+    },
+    centerText: {
+      backgroundColor: themeColors.card,
+    },
+    totalLabel: {
+      color: themeColors.textSecondary,
+    },
+    totalValue: {
+      color: themeColors.text,
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+    <View style={[styles.container, dynamicStyles.container]}>
+      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
       <View style={styles.chartContainer}>
         <PieChart
           data={pieData}
@@ -58,11 +105,11 @@ const WebDonutChart: React.FC<DonutChartProps> = ({
           hasLegend={true}
           avoidFalseZero
         />
-        
+
         {/* Center text to make it look like a donut */}
-        <View style={[styles.centerText, { left: width / 2 - 40, top: height / 2 - 30 }]}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>${total.toFixed(0)}</Text>
+        <View style={[styles.centerText, dynamicStyles.centerText, { left: width / 2 - 40, top: height / 2 - 30 }]}>
+          <Text style={[styles.totalLabel, dynamicStyles.totalLabel]}>Total</Text>
+          <Text style={[styles.totalValue, dynamicStyles.totalValue]}>${total.toFixed(0)}</Text>
         </View>
       </View>
     </View>
@@ -71,7 +118,6 @@ const WebDonutChart: React.FC<DonutChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginVertical: 10,
@@ -94,7 +140,6 @@ const styles = StyleSheet.create({
   },
   centerText: {
     position: 'absolute',
-    backgroundColor: 'white',
     borderRadius: 40,
     width: 80,
     height: 80,
@@ -108,12 +153,10 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 12,
-    color: '#666',
   },
   totalValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
   }
 });
 
