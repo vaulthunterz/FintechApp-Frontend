@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import Toast from "react-native-toast-message";
-import { getTransactionsWithPagination } from "../services/api";
+import api from "../services/api";
 import Header from "../components/Header";
 import ChatPanel from "../components/ChatPanel";
 import DrawerMenu from "../components/DrawerMenu";
@@ -121,6 +121,8 @@ const HomeScreen = () => {
       if (currentUser) {
         currentUser.getIdToken().then((tkn) => {
           setToken(tkn);
+          // Fetch transactions immediately after getting the token
+          fetchTransactions();
         }).catch((err) => {
           console.error("Token fetch error", err);
           Toast.show({
@@ -134,13 +136,6 @@ const HomeScreen = () => {
       }
     }
   }, [user]);
-
-  useEffect(() => {
-    if (token) {
-      fetchTransactions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
 
   useEffect(() => {
     if (token && transactions.length > 0) {
@@ -171,7 +166,7 @@ const HomeScreen = () => {
       setLoading(true);
       // Add page parameter to the API call if provided
       const endpoint = page ? `/api/expenses/transactions/?page=${page}` : '/api/expenses/transactions/';
-      const response = await getTransactionsWithPagination(token || "mock-token", endpoint);
+      const response = await api.getTransactionsWithPagination(endpoint);
 
       if (response && response.data) {
         // Sort transactions by date (newest first)

@@ -19,6 +19,17 @@ interface ProfileAnalyticsProps {
       bonds: number;
       cash: number;
     };
+    portfolioSummary?: {
+      total_invested: number;
+      current_value: number;
+      returns: number;
+      returns_percentage: number;
+      asset_allocation: Array<{
+        type: string;
+        percentage: number;
+        value: number;
+      }>;
+    };
   };
 }
 
@@ -246,11 +257,128 @@ const ProfileAnalytics: React.FC<ProfileAnalyticsProps> = ({ profile, questionna
     questionnaireStatus: {
       color: colors.text,
     },
+    // Portfolio summary styles
+    portfolioLabel: {
+      color: colors.textSecondary,
+    },
+    portfolioValue: {
+      color: colors.text,
+    },
+    portfolioSubtitle: {
+      color: colors.text,
+    },
+    assetName: {
+      color: colors.text,
+    },
+    assetPercentage: {
+      color: colors.textSecondary,
+    },
+    assetValue: {
+      color: colors.text,
+    },
+    emptyPortfolioText: {
+      color: colors.textSecondary,
+    },
   };
+
+  // Format currency values
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
+  // Format percentage values
+  const formatPercentage = (value: number): string => {
+    return `${value.toFixed(2)}%`;
+  };
+
+  // Get portfolio summary data
+  const portfolioSummary = analytics?.portfolioSummary || {
+    total_invested: 0,
+    current_value: 0,
+    returns: 0,
+    returns_percentage: 0,
+    asset_allocation: []
+  };
+
+  // Determine if portfolio has data
+  const hasPortfolioData = portfolioSummary.total_invested > 0 || portfolioSummary.current_value > 0;
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <Text style={[styles.title, dynamicStyles.title]}>Investment Profile Analysis</Text>
+
+      {/* Portfolio Summary Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Portfolio Summary</Text>
+
+        {hasPortfolioData ? (
+          <>
+            <View style={styles.portfolioSummaryContainer}>
+              <View style={styles.portfolioSummaryItem}>
+                <Text style={[styles.portfolioLabel, dynamicStyles.portfolioLabel]}>Total Invested</Text>
+                <Text style={[styles.portfolioValue, dynamicStyles.portfolioValue]}>
+                  {formatCurrency(portfolioSummary.total_invested)}
+                </Text>
+              </View>
+
+              <View style={styles.portfolioSummaryItem}>
+                <Text style={[styles.portfolioLabel, dynamicStyles.portfolioLabel]}>Current Value</Text>
+                <Text style={[styles.portfolioValue, dynamicStyles.portfolioValue]}>
+                  {formatCurrency(portfolioSummary.current_value)}
+                </Text>
+              </View>
+
+              <View style={styles.portfolioSummaryItem}>
+                <Text style={[styles.portfolioLabel, dynamicStyles.portfolioLabel]}>Returns</Text>
+                <Text style={[
+                  styles.portfolioValue,
+                  dynamicStyles.portfolioValue,
+                  { color: portfolioSummary.returns >= 0 ? colors.success : colors.error }
+                ]}>
+                  {formatCurrency(portfolioSummary.returns)}
+                  ({portfolioSummary.returns_percentage >= 0 ? '+' : ''}{formatPercentage(portfolioSummary.returns_percentage)})
+                </Text>
+              </View>
+            </View>
+
+            {/* Asset Allocation from Portfolio */}
+            {portfolioSummary.asset_allocation && portfolioSummary.asset_allocation.length > 0 && (
+              <View style={styles.portfolioAllocationContainer}>
+                <Text style={[styles.portfolioSubtitle, dynamicStyles.portfolioSubtitle]}>Current Asset Allocation</Text>
+                {portfolioSummary.asset_allocation.map((asset, index) => (
+                  <View key={index} style={styles.portfolioAssetItem}>
+                    <View style={styles.assetNameContainer}>
+                      <View
+                        style={[styles.assetColorIndicator, { backgroundColor: getAssetColor(asset.type, index, colors) }]}
+                      />
+                      <Text style={[styles.assetName, dynamicStyles.assetName]}>{asset.type}</Text>
+                    </View>
+                    <View style={styles.assetDetailsContainer}>
+                      <Text style={[styles.assetPercentage, dynamicStyles.assetPercentage]}>
+                        {formatPercentage(asset.percentage)}
+                      </Text>
+                      <Text style={[styles.assetValue, dynamicStyles.assetValue]}>
+                        {formatCurrency(asset.value)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.emptyPortfolioContainer}>
+            <Text style={[styles.emptyPortfolioText, dynamicStyles.emptyPortfolioText]}>
+              No portfolio data available. Start investing to see your portfolio summary.
+            </Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Risk Profile</Text>
@@ -361,6 +489,31 @@ const ProfileAnalytics: React.FC<ProfileAnalyticsProps> = ({ profile, questionna
       </View>
     </View>
   );
+
+  // Helper function to get color for asset type
+  function getAssetColor(assetType: string, index: number, colors: any): string {
+    const assetTypeColors: Record<string, string> = {
+      'stock': colors.primary,
+      'bond': colors.success,
+      'cash': colors.warning,
+      'equity': colors.primary,
+      'fixed': colors.success,
+      'money': colors.warning,
+      'real': colors.error,
+      'alternative': colors.info
+    };
+
+    // Try to match asset type to predefined colors
+    for (const [key, color] of Object.entries(assetTypeColors)) {
+      if (assetType.toLowerCase().includes(key.toLowerCase())) {
+        return color;
+      }
+    }
+
+    // Fallback to a color based on index
+    const fallbackColors = [colors.primary, colors.success, colors.warning, colors.error, colors.info];
+    return fallbackColors[index % fallbackColors.length];
+  }
 };
 
 const styles = StyleSheet.create({
@@ -524,6 +677,90 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     marginTop: 8,
+  },
+  // Portfolio summary styles
+  portfolioSummaryContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  portfolioSummaryItem: {
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  portfolioLabel: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500',
+  },
+  portfolioValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  portfolioAllocationContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  portfolioSubtitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  portfolioAssetItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  assetNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  assetColorIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  assetName: {
+    fontSize: 14,
+    color: '#333',
+  },
+  assetDetailsContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
+  assetPercentage: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 4,
+  },
+  assetValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  emptyPortfolioContainer: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  emptyPortfolioText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

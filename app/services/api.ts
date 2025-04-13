@@ -69,9 +69,34 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
     });
   }
 
+  // Ensure the endpoint starts with a slash and doesn't contain the token
+  let normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // Check if the endpoint contains the token (which would be a mistake)
+  if (token && normalizedEndpoint.includes(token)) {
+    console.error('ERROR: Token found in URL path. Removing token from URL.');
+    // Remove the token from the endpoint
+    const tokenPattern = new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    normalizedEndpoint = normalizedEndpoint.replace(tokenPattern, '');
+    console.log('Cleaned endpoint:', normalizedEndpoint);
+  }
+
+  // Construct the full URL, ensuring there are no double slashes
+  const url = `${API_BASE_URL}${normalizedEndpoint}`;
+  console.log('Constructed URL:', url);
+
+  // Validate URL
+  try {
+    new URL(url); // This will throw if URL is invalid
+    console.log('URL is valid');
+  } catch (urlError: any) { // Add type annotation
+    console.error('Invalid URL constructed:', url, urlError);
+    throw new Error(`Invalid URL: ${url} - ${urlError.message}`);
+  }
+
   const config: any = {
     method: method.toLowerCase(),
-    url: `${API_BASE_URL}${endpoint}`,
+    url: url,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -109,8 +134,11 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
     data: config.data
   });
 
+  // Store the config in a local variable to use in error handling
+  let requestConfig = config;
+
   try {
-    const response = await axios(config);
+    const response = await axios(requestConfig);
     console.log(`${method.toUpperCase()} request succeeded with status:`, response.status);
     if (response.data) {
       console.log("Response data preview:",
@@ -149,9 +177,9 @@ const apiRequest = async (method: string, endpoint: string, data: any = null) =>
             // Create new config with fresh token
             const newToken = await currentUser.getIdToken();
             const newConfig = {
-              ...config,
+              ...requestConfig,
               headers: {
-                ...config.headers,
+                ...requestConfig.headers,
                 'Authorization': `Bearer ${newToken}`
               }
             };
@@ -256,7 +284,7 @@ export const fetchTransactions = async (page?: number) => {
   return { data: response, pagination: null };
 };
 
-export const getTransactions = async (token: string) => {
+export const getTransactions = async () => {
   try {
     const response = await apiRequest('get', '/api/expenses/transactions/');
     // Handle paginated response - extract results array
@@ -285,7 +313,7 @@ export const getTransactions = async (token: string) => {
 };
 
 // Function to get transactions with pagination support
-export const getTransactionsWithPagination = async (token: string, endpoint: string = '/api/expenses/transactions/') => {
+export const getTransactionsWithPagination = async (endpoint: string = '/api/expenses/transactions/') => {
   try {
     const response = await apiRequest('get', endpoint);
     // Handle paginated response - extract results array
@@ -321,7 +349,7 @@ export const fetchTransaction = async (transactionId: string) => {
   return apiRequest('get', `/api/expenses/transactions/${transactionId}/`);
 };
 
-export const getTransactionById = async (id: string, token: string) => {
+export const getTransactionById = async (id: string) => {
   try {
     const response = await apiRequest('get', `/api/expenses/transactions/${id}/`);
     return { data: response };
@@ -426,16 +454,30 @@ export const deleteSubcategory = async (subcategoryId: string) => {
 const getHeaders = async () => {
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : null;
+
+  // Log token details for debugging
+  if (token) {
+    console.log("Token available for headers");
+    console.log("- Token length:", token.length);
+    console.log("- First 10 chars:", token.substring(0, 10));
+  }
+
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
   };
 };
 
+// Investment Portfolio functions are defined below
+
 export const getGeminiPrediction = async (description: string) => {
   try {
+    // Ensure proper URL construction
+    const url = `${API_BASE_URL}/api/expenses/predict/gemini/`;
+    console.log('Gemini prediction URL:', url);
+
     const response = await axios.post(
-      `${API_BASE_URL}/api/expenses/predict/gemini/`,
+      url,
       { description },
       { headers: await getHeaders() }
     );
@@ -448,8 +490,12 @@ export const getGeminiPrediction = async (description: string) => {
 
 export const getCustomPrediction = async (description: string, merchant: string) => {
   try {
+    // Ensure proper URL construction
+    const url = `${API_BASE_URL}/api/expenses/predict/custom/`;
+    console.log('Custom prediction URL:', url);
+
     const response = await axios.post(
-      `${API_BASE_URL}/api/expenses/predict/custom/`,
+      url,
       { description, merchant },
       { headers: await getHeaders() }
     );
@@ -534,7 +580,24 @@ export const getInvestmentPerformance = async (investmentId: string) => {
 };
 
 export const getPortfolioSummary = async () => {
-  return apiRequest('get', '/api/investment/portfolio/summary/');
+  try {
+    const response = await apiRequest('get', '/api/investment/portfolio/summary/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching portfolio summary:', error);
+    // Return a default portfolio structure if the API fails
+    return {
+      total_invested: 0,
+      current_value: 0,
+      returns: 0,
+      returns_percentage: 0,
+      asset_allocation: [
+        { type: 'Stocks', percentage: 60, value: 0 },
+        { type: 'Bonds', percentage: 30, value: 0 },
+        { type: 'Cash', percentage: 10, value: 0 }
+      ]
+    };
+  }
 };
 
 // Investment Profile functions
@@ -547,7 +610,13 @@ export const fetchUserProfile = async (profileId: string) => {
 };
 
 export const createUserProfile = async (profileData: any) => {
-  return apiRequest('post', '/api/investment/profiles/', profileData);
+  try {
+    const response = await apiRequest('post', '/api/investment/profiles/', profileData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    throw error;
+  }
 };
 
 export const updateUserProfile = async (profileId: string, profileData: any) => {
@@ -562,7 +631,7 @@ export const fetchQuestionnaires = async () => {
 export const submitQuestionnaire = async (questionnaireData: any) => {
   try {
     return await apiRequest('post', '/api/investment/questionnaires/', questionnaireData);
-  } catch (error) {
+  } catch (error: any) { // Add type annotation
     // If we get a 404, the investment module is not available
     if (error.response && error.response.status === 404) {
       console.log('Investment module is not available, returning mock response');
@@ -571,6 +640,15 @@ export const submitQuestionnaire = async (questionnaireData: any) => {
         id: 'mock-id',
         message: 'Investment module is currently under maintenance',
         status: 'maintenance'
+      };
+    }
+    // If we get a 401, the user is not authenticated
+    if (error.response && error.response.status === 401) {
+      console.log('User not authenticated, returning error response');
+      return {
+        id: 'auth-error',
+        message: 'Authentication required',
+        status: 'error'
       };
     }
     // For other errors, rethrow
@@ -585,7 +663,7 @@ export const checkQuestionnaireStatus = async () => {
       const response = await apiRequest('get', '/api/investment/questionnaires/status/');
       console.log('Questionnaire status response:', response);
       return response;
-    } catch (error) {
+    } catch (error: any) { // Add type annotation
       // If we get a 404, the investment module is not available
       if (error.response && error.response.status === 404) {
         console.log('Investment module is not available, returning default status');
@@ -595,10 +673,19 @@ export const checkQuestionnaireStatus = async () => {
           message: 'Investment module is currently under maintenance'
         };
       }
+      // If we get a 401, the user is not authenticated
+      if (error.response && error.response.status === 401) {
+        console.log('User not authenticated, returning default status');
+        // Return a default response that won't block the user
+        return {
+          isCompleted: false,
+          message: 'Authentication required'
+        };
+      }
       // For other errors, rethrow
       throw error;
     }
-  } catch (error) {
+  } catch (error: any) { // Add type annotation
     console.error('Error checking questionnaire status:', error);
     // If there's an error, assume questionnaire is not completed
     // But don't fail silently - log detailed error information
@@ -620,8 +707,12 @@ interface ChangePasswordData {
 
 export const changePassword = async (data: ChangePasswordData) => {
   try {
+    // Ensure proper URL construction
+    const url = `${API_BASE_URL}/api/expenses/change-password/`;
+    console.log('Change password URL:', url);
+
     const response = await axios.post(
-      `${API_BASE_URL}/api/expenses/change-password/`,
+      url,
       data,
       {
         headers: {
@@ -641,6 +732,7 @@ export const changePassword = async (data: ChangePasswordData) => {
 const api = {
   fetchTransactions,
   getTransactions,
+  getTransactionsWithPagination,
   addTransaction,
   fetchTransaction,
   getTransactionById,

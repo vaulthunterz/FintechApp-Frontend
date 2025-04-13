@@ -50,15 +50,17 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
   // Define the fetchData function outside useEffect so it can be reused
   const fetchData = useCallback(async () => {
       try {
-        console.log('Fetching profile and questionnaire data...');
+        setLoading(true);
+        console.log('Fetching profile, questionnaire, and portfolio data...');
 
-        // Make API calls to get user profile and questionnaire data
-        const [profileResponse, questionnaireStatus] = await Promise.all([
+        // Make API calls to get user profile, questionnaire data, and portfolio summary
+        const [profileResponse, questionnaireStatus, portfolioSummary] = await Promise.all([
           api.fetchUserProfiles(),
-          api.checkQuestionnaireStatus()
+          api.checkQuestionnaireStatus(),
+          api.getPortfolioSummary()
         ]);
 
-        console.log('API responses:', { profileResponse, questionnaireStatus });
+        console.log('API responses:', { profileResponse, questionnaireStatus, portfolioSummary });
 
         // Process profile data
         if (profileResponse && profileResponse.length > 0) {
@@ -76,32 +78,45 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
           // Always show analytics if we have a profile
           setShowAnalytics(true);
         } else {
-          // No existing profile, create a default one for testing
-          console.log("No existing investment profile found, creating default");
+          console.log("No existing investment profile found, creating one");
 
-          const defaultProfile = {
-            id: 'default-profile',
-            risk_tolerance: 2,
-            investment_experience: 'intermediate',
-            investment_timeline: 'mid',
-            investment_goals: 'Retirement'
-          };
+          // Create a new profile via API
+          try {
+            const newProfile = {
+              risk_tolerance: 2, // Medium risk as default
+              investment_experience: 'beginner',
+              investment_timeline: 'mid',
+              investment_goals: 'Building wealth for the future'
+            };
 
-          setProfile(defaultProfile);
-          setFormData({
-            risk_tolerance: defaultProfile.risk_tolerance,
-            investment_experience: defaultProfile.investment_experience,
-            investment_timeline: defaultProfile.investment_timeline,
-            investment_goals: defaultProfile.investment_goals
-          });
+            const createdProfile = await api.createUserProfile(newProfile);
+            console.log('Created new profile:', createdProfile);
 
-          setShowAnalytics(true);
+            setProfile(createdProfile);
+            setFormData({
+              risk_tolerance: createdProfile.risk_tolerance,
+              investment_experience: createdProfile.investment_experience,
+              investment_timeline: createdProfile.investment_timeline,
+              investment_goals: createdProfile.investment_goals
+            });
 
-          Toast.show({
-            type: 'info',
-            text1: 'Welcome!',
-            text2: 'Using default profile for demonstration'
-          });
+            setShowAnalytics(true);
+
+            Toast.show({
+              type: 'success',
+              text1: 'Profile Created',
+              text2: 'Your investment profile has been created',
+              position: 'bottom'
+            });
+          } catch (profileError) {
+            console.error('Error creating profile:', profileError);
+            Toast.show({
+              type: 'error',
+              text1: 'Error',
+              text2: 'Failed to create investment profile',
+              position: 'bottom'
+            });
+          }
         }
 
         // Process questionnaire data
@@ -115,77 +130,113 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
 
           // Set analytics data if available
           if (questionnaireStatus.analytics) {
-            console.log('Setting analytics data');
-            setAnalytics(questionnaireStatus.analytics);
-          } else {
-            // Create default analytics for testing
-            console.log('Creating default analytics');
+            console.log('Setting analytics data from questionnaire');
             setAnalytics({
-              risk_score: 6,
-              profile_risk_level: 2,
-              investment_style: 'Balanced',
-              allocation: {
-                stocks: 60,
-                bonds: 30,
-                cash: 10
-              }
+              ...questionnaireStatus.analytics,
+              portfolioSummary: portfolioSummary
+            });
+          } else {
+            // Use portfolio data for analytics
+            console.log('Using portfolio data for analytics');
+
+            // Calculate risk score based on profile risk tolerance
+            const riskScore = typeof profile?.risk_tolerance === 'number'
+              ? profile.risk_tolerance * 3
+              : 5;
+
+            // Create analytics from portfolio data
+            setAnalytics({
+              risk_score: riskScore,
+              profile_risk_level: typeof profile?.risk_tolerance === 'number' ? profile.risk_tolerance : 2,
+              investment_style: getInvestmentStyleFromRisk(profile?.risk_tolerance),
+              allocation: getAssetAllocationFromPortfolio(portfolioSummary),
+              portfolioSummary: portfolioSummary
             });
           }
         } else {
-          console.log('Questionnaire not completed, using default analytics');
-          // Create default analytics for testing
+          console.log('Questionnaire not completed, using portfolio data');
+
+          // Calculate risk score based on profile risk tolerance
+          const riskScore = typeof profile?.risk_tolerance === 'number'
+            ? profile.risk_tolerance * 3
+            : 5;
+
+          // Create analytics from portfolio data
           setAnalytics({
-            risk_score: 6,
-            profile_risk_level: 2,
-            investment_style: 'Balanced',
-            allocation: {
-              stocks: 60,
-              bonds: 30,
-              cash: 10
-            }
+            risk_score: riskScore,
+            profile_risk_level: typeof profile?.risk_tolerance === 'number' ? profile.risk_tolerance : 2,
+            investment_style: getInvestmentStyleFromRisk(profile?.risk_tolerance),
+            allocation: getAssetAllocationFromPortfolio(portfolioSummary),
+            portfolioSummary: portfolioSummary
           });
         }
       } catch (error) {
         console.error('Error fetching data:', error);
 
-        // Create default data for testing
-        const defaultProfile = {
-          id: 'default-profile',
-          risk_tolerance: 2,
-          investment_experience: 'intermediate',
-          investment_timeline: 'mid',
-          investment_goals: 'Retirement'
-        };
-
-        setProfile(defaultProfile);
-        setFormData({
-          risk_tolerance: defaultProfile.risk_tolerance,
-          investment_experience: defaultProfile.investment_experience,
-          investment_timeline: defaultProfile.investment_timeline,
-          investment_goals: defaultProfile.investment_goals
-        });
-
-        setShowAnalytics(true);
-        setAnalytics({
-          risk_score: 6,
-          profile_risk_level: 2,
-          investment_style: 'Balanced',
-          allocation: {
-            stocks: 60,
-            bonds: 30,
-            cash: 10
-          }
-        });
-
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Using demo data due to connection issue'
+          text2: 'Failed to load profile data. Please try again.',
+          position: 'bottom'
         });
       } finally {
         setLoading(false);
       }
     }, []);
+
+  // Helper function to determine investment style based on risk tolerance
+  const getInvestmentStyleFromRisk = (riskTolerance: number | string | undefined): string => {
+    if (typeof riskTolerance === 'number') {
+      if (riskTolerance === 1) return 'Conservative';
+      if (riskTolerance === 2) return 'Balanced';
+      if (riskTolerance === 3) return 'Growth';
+    }
+    return 'Balanced'; // Default
+  };
+
+  // Helper function to extract asset allocation from portfolio summary
+  const getAssetAllocationFromPortfolio = (portfolioSummary: any): { stocks: number, bonds: number, cash: number } => {
+    if (!portfolioSummary || !portfolioSummary.asset_allocation || portfolioSummary.asset_allocation.length === 0) {
+      // Default allocation if no portfolio data
+      return { stocks: 50, bonds: 30, cash: 20 };
+    }
+
+    // Map portfolio asset types to our simplified categories
+    let stocks = 0;
+    let bonds = 0;
+    let cash = 0;
+
+    portfolioSummary.asset_allocation.forEach((asset: any) => {
+      const assetType = asset.type.toLowerCase();
+      if (assetType.includes('stock') || assetType.includes('equity') || assetType.includes('share')) {
+        stocks += asset.percentage;
+      } else if (assetType.includes('bond') || assetType.includes('fixed') || assetType.includes('debt')) {
+        bonds += asset.percentage;
+      } else if (assetType.includes('cash') || assetType.includes('money') || assetType.includes('liquid')) {
+        cash += asset.percentage;
+      } else {
+        // For unknown types, distribute proportionally
+        stocks += asset.percentage * 0.5; // 50% to stocks
+        bonds += asset.percentage * 0.3;  // 30% to bonds
+        cash += asset.percentage * 0.2;   // 20% to cash
+      }
+    });
+
+    // Normalize to ensure they sum to 100%
+    const total = stocks + bonds + cash;
+    if (total > 0) {
+      stocks = Math.round((stocks / total) * 100);
+      bonds = Math.round((bonds / total) * 100);
+      cash = 100 - stocks - bonds; // Ensure they sum to exactly 100
+    } else {
+      // Default if all zeros
+      stocks = 50;
+      bonds = 30;
+      cash = 20;
+    }
+
+    return { stocks, bonds, cash };
+  };
 
   // Initial data fetch on component mount
   useEffect(() => {
