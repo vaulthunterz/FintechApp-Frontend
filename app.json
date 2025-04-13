@@ -18,7 +18,11 @@
       },
       "package": "com.fintech.expensecategorization",
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "READ_SMS",
+        "RECEIVE_SMS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "versionCode": 1
     },

@@ -4,7 +4,7 @@ import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuthProvider from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import BottomNavBar from './components/BottomNavBar';
+import BackgroundSMSListener from './components/BackgroundSMSListener';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -83,6 +84,8 @@ function AppContent({ currentRoute, shouldShowBottomNav, loaded }: { currentRout
         {shouldShowBottomNav && <BottomNavBar currentRoute={currentRoute} />}
         <StatusBar style={isDark ? "light" : "dark"} />
         <Toast />
+        {/* Only show SMS listener when user is authenticated and on Android */}
+        {shouldShowBottomNav && Platform.OS === 'android' && <BackgroundSMSListener />}
       </View>
     </>
   );

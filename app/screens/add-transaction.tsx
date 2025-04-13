@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "react-native-toast-message";
@@ -42,6 +42,7 @@ interface Prediction {
 
 const AddTransactionScreen = () => {
   const { user } = useAuth();
+  const params = useLocalSearchParams();
   const [merchantName, setMerchantName] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -60,6 +61,37 @@ const AddTransactionScreen = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [pendingSubcategoryId, setPendingSubcategoryId] = useState<string | null>(null);
+
+  // Handle SMS transaction data if provided via params
+  useEffect(() => {
+    if (params.merchant && params.amount && params.transactionId) {
+      // Set transaction data from SMS
+      setMerchantName(params.merchant as string);
+      setAmount(params.amount as string);
+      setDescription(`Transaction ID: ${params.transactionId as string}`);
+      setIsExpense(true); // Assuming SMS transactions are expenses
+
+      // If date and time are provided, parse them
+      if (params.date && params.time) {
+        try {
+          const dateStr = params.date as string;
+          const timeStr = params.time as string;
+          const dateTimeStr = `${dateStr} ${timeStr}`;
+          const newDate = new Date(dateTimeStr);
+          if (!isNaN(newDate.getTime())) {
+            setDate(newDate);
+          }
+        } catch (error) {
+          console.error("Error parsing date/time from SMS:", error);
+        }
+      }
+
+      // Try to predict category based on merchant name and description
+      if (token) {
+        predictCategory('gemini');
+      }
+    }
+  }, [params, token]);
 
   useEffect(() => {
     if (user) {
@@ -98,7 +130,7 @@ const AddTransactionScreen = () => {
                 : (sub.name ? String(sub.name) : `Subcategory ${sub.id}`)
             }));
             setSubcategories(processedData);
-            
+
             // If there's a pending subcategory ID, set it now
             if (pendingSubcategoryId) {
               setSubcategory(pendingSubcategoryId);
@@ -126,7 +158,7 @@ const AddTransactionScreen = () => {
     try {
       const response = await api.fetchCategories();
       console.log("Categories response:", response);
-      
+
       if (Array.isArray(response)) {
         // Check each category to ensure name is a string
         const validCategories = response.map(cat => {
@@ -191,13 +223,13 @@ const AddTransactionScreen = () => {
       } else {
         predictionResponse = await api.getCustomPrediction(description, merchantName);
       }
-      
+
       console.log(`${modelType} prediction response:`, predictionResponse);
-      
+
       if (predictionResponse && predictionResponse.category_id) {
         const categoryId = String(predictionResponse.category_id);
         const subcategoryId = predictionResponse.subcategory_id ? String(predictionResponse.subcategory_id) : null;
-        
+
         console.log("Setting category ID:", categoryId);
         console.log("Setting subcategory ID:", subcategoryId);
 
@@ -310,7 +342,7 @@ const AddTransactionScreen = () => {
           return v.toString(16);
         });
       };
-      
+
       const transaction_id = generateUUID();
 
       // Format date and time in ISO format
@@ -480,10 +512,10 @@ const AddTransactionScreen = () => {
             >
               <Picker.Item label="Select a category" value="" />
               {categories.map((cat) => (
-                <Picker.Item 
-                  key={cat.id} 
-                  label={cat.name} 
-                  value={cat.id} 
+                <Picker.Item
+                  key={cat.id}
+                  label={cat.name}
+                  value={cat.id}
                 />
               ))}
             </Picker>
@@ -505,9 +537,9 @@ const AddTransactionScreen = () => {
               {subcategories
                 .filter(sub => sub.category_id === category)
                 .map((sub) => (
-                  <Picker.Item 
-                    key={sub.id} 
-                    label={sub.name} 
+                  <Picker.Item
+                    key={sub.id}
+                    label={sub.name}
                     value={sub.id}
                   />
                 ))}
@@ -529,7 +561,7 @@ const AddTransactionScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.submitButton}
           onPress={handleSubmit}
           disabled={loading}
@@ -678,4 +710,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddTransactionScreen; 
+export default AddTransactionScreen;
