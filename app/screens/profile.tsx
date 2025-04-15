@@ -6,8 +6,16 @@ import Profile from '../components/profile/Profile';
 
 const ProfileScreen = () => {
   const params = useLocalSearchParams();
+  // Check if this is an investment portfolio or user profile
+  // If source is 'user', it's explicitly a user profile
+  // If source is 'investment', it's an investment portfolio
+  // If source is undefined, default to user profile
   const isInvestmentPortfolio = params.source === 'investment';
   const { colors } = useTheme();
+
+  // Add debug logging
+  console.log('Profile Screen params:', params);
+  console.log('isInvestmentPortfolio:', isInvestmentPortfolio);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "react-native-toast-message";
 import api from "../services/api";
+import aiService from "../services/aiService";
 import Header from "../components/Header";
 import { auth } from "../config/firebaseConfig";
 import { Picker } from "@react-native-picker/picker";
@@ -119,24 +120,54 @@ const AddTransactionScreen = () => {
   useEffect(() => {
     const fetchSubcategoriesForCategory = async () => {
       if (category) {
+        console.log("Fetching subcategories for category ID:", category);
         try {
           const subcategoriesData = await api.fetchSubCategories(category);
+          console.log("Subcategories response:", subcategoriesData);
           if (Array.isArray(subcategoriesData)) {
-            const processedData = subcategoriesData.map((sub) => ({
-              ...sub,
-              category_id: category,
-              name: typeof sub.name === 'string'
-                ? sub.name
-                : (sub.name ? String(sub.name) : `Subcategory ${sub.id}`)
-            }));
+            console.log("Number of subcategories returned:", subcategoriesData.length);
+            const processedData = subcategoriesData.map((sub) => {
+              const processed = {
+                ...sub,
+                category_id: category,
+                name: typeof sub.name === 'string'
+                  ? sub.name
+                  : (sub.name ? String(sub.name) : `Subcategory ${sub.id}`)
+              };
+              console.log("Processed subcategory:", processed);
+              return processed;
+            });
+            console.log("Setting subcategories state with:", processedData);
             setSubcategories(processedData);
 
             // If there's a pending subcategory ID, set it now
             if (pendingSubcategoryId) {
-              setSubcategory(pendingSubcategoryId);
+              console.log("Setting subcategory to pending ID:", pendingSubcategoryId);
+              const subcategoryExists = processedData.some(s => String(s.id) === String(pendingSubcategoryId));
+              console.log("Subcategory exists in dropdown:", subcategoryExists);
+
+              if (subcategoryExists) {
+                setSubcategory(pendingSubcategoryId);
+              } else {
+                // If we have a prediction with subcategory name but no matching ID
+                if (prediction && prediction.subcategory_name) {
+                  // Try to find subcategory by name
+                  const subcategoryMatch = processedData.find(s => s.name === prediction.subcategory_name);
+                  if (subcategoryMatch) {
+                    console.log("Found subcategory by name:", subcategoryMatch.id);
+                    setSubcategory(String(subcategoryMatch.id));
+                  } else {
+                    console.log("Could not find subcategory by name");
+                    setSubcategory(null);
+                  }
+                } else {
+                  setSubcategory(null);
+                }
+              }
               setPendingSubcategoryId(null);
             } else {
               // Reset subcategory if there's no pending ID
+              console.log("No pending subcategory ID, resetting subcategory");
               setSubcategory(null);
             }
           }
@@ -191,7 +222,10 @@ const AddTransactionScreen = () => {
   const handleCategoryChange = (itemValue: string) => {
     console.log("Category selected:", itemValue);
     const categoryValue = itemValue === "" ? null : itemValue;
+    console.log("Setting category to:", categoryValue);
     setCategory(categoryValue);
+    // Reset subcategory when category changes
+    setSubcategory(null);
     // Subcategories will be fetched by the useEffect
   };
 
@@ -218,27 +252,100 @@ const AddTransactionScreen = () => {
       setIsPredicting(true);
       let predictionResponse;
 
+      // Make sure categories are loaded before prediction
+      if (categories.length === 0) {
+        console.log("Categories not loaded yet, fetching categories first");
+        await fetchCategories();
+      }
+
+      // Use the AI service directly instead of going through the API service
       if (modelType === 'gemini') {
-        predictionResponse = await api.getGeminiPrediction(description);
+        predictionResponse = await aiService.getGeminiPrediction(description);
       } else {
-        predictionResponse = await api.getCustomPrediction(description, merchantName);
+        predictionResponse = await aiService.getCustomModelPrediction(description, merchantName);
       }
 
       console.log(`${modelType} prediction response:`, predictionResponse);
 
-      if (predictionResponse && predictionResponse.category_id) {
-        const categoryId = String(predictionResponse.category_id);
-        const subcategoryId = predictionResponse.subcategory_id ? String(predictionResponse.subcategory_id) : null;
+      if (predictionResponse) {
+        console.log("Prediction response:", JSON.stringify(predictionResponse));
+
+        // Get category ID either directly or by looking up the name
+        let categoryId = null;
+        let subcategoryId = null;
+
+        if (predictionResponse.category_id) {
+          // If we have a direct category ID
+          categoryId = String(predictionResponse.category_id);
+          subcategoryId = predictionResponse.subcategory_id ? String(predictionResponse.subcategory_id) : null;
+        } else if (predictionResponse.category_name) {
+          // If we only have the category name, find the ID
+          const categoryMatch = categories.find(c => c.name === predictionResponse.category_name);
+          if (categoryMatch) {
+            categoryId = String(categoryMatch.id);
+            console.log("Found category ID by name:", categoryId);
+          }
+        }
 
         console.log("Setting category ID:", categoryId);
         console.log("Setting subcategory ID:", subcategoryId);
+        console.log("Current categories:", categories.map(c => ({ id: c.id, name: c.name })));
+
+        if (!categoryId) {
+          console.error("Could not determine category ID from prediction");
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: "Could not find matching category",
+          });
+          return;
+        }
+
+        // Find the category in our list to verify it exists
+        console.log("Looking for category ID:", categoryId);
+        console.log("Available categories:", categories.map(c => ({ id: c.id, name: c.name })));
+
+        // Try to find by ID first
+        let categoryExists = categories.some(c => String(c.id) === String(categoryId));
+        console.log("Category exists in dropdown by ID match:", categoryExists);
+
+        // If not found by ID, try to find by name
+        if (!categoryExists && predictionResponse.category_name) {
+          const categoryByName = categories.find(c => c.name === predictionResponse.category_name);
+          if (categoryByName) {
+            console.log("Found category by name instead of ID:", categoryByName);
+            categoryId = String(categoryByName.id);
+            categoryExists = true;
+          }
+        }
+
+        if (!categoryExists) {
+          console.error("Category ID not found in available categories");
+          // Instead of showing an error, let's just set the prediction display
+          // but not try to set the dropdown value
+          setPrediction({
+            category_name: predictionResponse.category_name,
+            subcategory_name: predictionResponse.subcategory_name,
+            confidence: predictionResponse.confidence,
+            model_type: modelType
+          });
+
+          Toast.show({
+            type: "warning",
+            text1: "Warning",
+            text2: "Category found but not available in dropdown",
+          });
+          return;
+        }
 
         // Store the subcategory ID before changing the category
         if (subcategoryId) {
+          console.log("Setting pending subcategory ID:", subcategoryId);
           setPendingSubcategoryId(subcategoryId);
         }
 
         // Set the category - this will trigger the useEffect to fetch subcategories
+        console.log("Setting category state to:", categoryId);
         setCategory(categoryId);
 
         // Set prediction data for display
@@ -505,19 +612,30 @@ const AddTransactionScreen = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Category</Text>
           <View style={styles.pickerContainer}>
+            {/* Add a direct display of the selected category for debugging */}
+            {prediction && prediction.category_name && (
+              <Text style={styles.debugText}>Predicted: {prediction.category_name}</Text>
+            )}
+            {category && (
+              <Text style={styles.debugText}>Selected ID: {category}</Text>
+            )}
             <Picker
               selectedValue={category || ""}
               onValueChange={handleCategoryChange}
               style={styles.picker}
+              testID="categoryPicker"
             >
               <Picker.Item label="Select a category" value="" />
-              {categories.map((cat) => (
-                <Picker.Item
-                  key={cat.id}
-                  label={cat.name}
-                  value={cat.id}
-                />
-              ))}
+              {categories.map((cat) => {
+                console.log(`Rendering category option: ${cat.name} (${cat.id}), selected: ${String(cat.id) === category}`);
+                return (
+                  <Picker.Item
+                    key={cat.id}
+                    label={cat.name}
+                    value={cat.id}
+                  />
+                );
+              })}
             </Picker>
           </View>
         </View>
@@ -525,24 +643,35 @@ const AddTransactionScreen = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Subcategory</Text>
           <View style={styles.pickerContainer}>
+            {/* Add a direct display of the selected subcategory for debugging */}
+            {prediction && prediction.subcategory_name && (
+              <Text style={styles.debugText}>Predicted: {prediction.subcategory_name}</Text>
+            )}
+            {subcategory && (
+              <Text style={styles.debugText}>Selected ID: {subcategory}</Text>
+            )}
             <Picker
               selectedValue={subcategory || ""}
               onValueChange={(itemValue) => {
                 const subcategoryValue = itemValue === "" ? null : itemValue;
+                console.log(`Subcategory selected: ${subcategoryValue}`);
                 setSubcategory(subcategoryValue);
               }}
               style={styles.picker}
+              testID="subcategoryPicker"
             >
               <Picker.Item label="Select a subcategory" value="" />
-              {subcategories
-                .filter(sub => sub.category_id === category)
-                .map((sub) => (
+              {/* Don't filter subcategories here - they're already filtered by the API */}
+              {subcategories.map((sub) => {
+                console.log(`Rendering subcategory option: ${sub.name} (${sub.id}), selected: ${String(sub.id) === subcategory}`);
+                return (
                   <Picker.Item
                     key={sub.id}
                     label={sub.name}
                     value={sub.id}
                   />
-                ))}
+                );
+              })}
             </Picker>
           </View>
         </View>
@@ -653,6 +782,12 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     fontSize: 14,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+    fontStyle: 'italic',
   },
   datePickerButton: {
     flexDirection: "row",

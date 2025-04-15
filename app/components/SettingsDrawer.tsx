@@ -9,7 +9,8 @@ import {
   Animated,
   Dimensions,
   Modal,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -174,7 +175,11 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
               style={[styles.settingItem, dynamicStyles.settingItem]}
               onPress={() => {
                 onClose();
-                router.push('/screens/profile');
+                // Explicitly set source to 'user' to ensure we get the user profile
+                router.push({
+                  pathname: '/screens/profile',
+                  params: { source: 'user' }
+                });
               }}
             >
               <View style={styles.settingInfo}>
@@ -183,6 +188,23 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
+
+            {/* Only show M-PESA History option on Android */}
+            {Platform.OS === 'android' && (
+              <TouchableOpacity
+                style={[styles.settingItem, dynamicStyles.settingItem]}
+                onPress={() => {
+                  onClose();
+                  router.push('/screens/mpesa-history');
+                }}
+              >
+                <View style={styles.settingInfo}>
+                  <Ionicons name="phone-portrait-outline" size={24} color={colors.text} style={styles.settingIcon} />
+                  <Text style={[styles.settingText, dynamicStyles.settingText]}>M-PESA History</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.settingItem, dynamicStyles.settingItem]}

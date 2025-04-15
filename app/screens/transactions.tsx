@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import { auth } from "../config/firebaseConfig";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from "date-fns";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import GiftedExpenseChart from "../components/charts/GiftedExpenseChart";
 
 // Define transaction interface
 interface Transaction {
@@ -397,12 +399,45 @@ const TransactionsScreen = () => {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : filteredTransactions.length > 0 ? (
-        <>
+        <ScrollView style={{ flex: 1 }}>
+          {/* Expense Chart */}
+          <GiftedExpenseChart
+            data={[
+              { category: 'Food', amount: 250, color: '#FF6384' },
+              { category: 'Transport', amount: 150, color: '#36A2EB' },
+              { category: 'Entertainment', amount: 100, color: '#FFCE56' },
+              { category: 'Shopping', amount: 200, color: '#4BC0C0' },
+              { category: 'Utilities', amount: 120, color: '#9966FF' },
+            ]}
+            title="Monthly Expenses"
+            type="pie"
+            period="June 2023"
+          />
+
+          {/* Bar Chart */}
+          <GiftedExpenseChart
+            data={[
+              { category: 'Jan', amount: 1200, color: '#FF6384' },
+              { category: 'Feb', amount: 1900, color: '#36A2EB' },
+              { category: 'Mar', amount: 1500, color: '#FFCE56' },
+              { category: 'Apr', amount: 2100, color: '#4BC0C0' },
+              { category: 'May', amount: 1800, color: '#9966FF' },
+              { category: 'Jun', amount: 2400, color: '#FF9F40' },
+            ]}
+            title="Expense Trend"
+            type="bar"
+            period="First Half 2023"
+          />
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20, marginLeft: 15 }]}>Transaction History</Text>
+
           <FlatList
             data={filteredTransactions}
             keyExtractor={(item) => item.id}
             renderItem={renderTransactionItem}
             contentContainerStyle={styles.listContent}
+            scrollEnabled={false}
+            nestedScrollEnabled={true}
           />
 
           {/* Pagination Controls */}
@@ -427,7 +462,7 @@ const TransactionsScreen = () => {
               <Text style={[styles.paginationButtonText, dynamicStyles.paginationButtonText]}>Next</Text>
             </TouchableOpacity>
           </View>
-        </>
+        </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={60} color={colors.textSecondary} />
@@ -459,6 +494,11 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 22,
     fontWeight: "bold",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
   addButton: {
     padding: 5,

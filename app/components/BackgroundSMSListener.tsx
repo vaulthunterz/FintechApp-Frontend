@@ -1,173 +1,123 @@
-import React, { useEffect } from "react";
-import { Alert, AppState, Platform, NativeModules } from "react-native";
-import SmsAndroid from "react-native-get-sms-android";
-import PushNotification from "react-native-push-notification";
+import { useEffect, useCallback, useRef } from "react";
+import { AppState, Platform } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
-import api from "../services/api";
+import { listenForMpesaTransactions } from "../utils/smsRetrieverUtils";
+import { showTransactionNotification, addNotificationResponseReceivedListener } from "../utils/notificationUtils";
 
 const BackgroundSMSListener = () => {
-  // Early return if not on Android platform
-  if (Platform.OS !== 'android') {
-    console.log('SMS Listener is only supported on Android devices');
-    return null;
-  }
-
-  const senderNames = ["Safaricom", "M-PESA"]; // Define the senders to filter for here
   const { user } = useAuth();
+  const isAndroid = Platform.OS === 'android';
+  const notificationSubscription = useRef<any>(null);
 
-  useEffect(() => {
-    try {
-      // Create notification channel
-      PushNotification.createChannel({
-        channelId: "transaction_channel",
-        channelName: "Transaction Notifications",
-        importance: 4,
+  // Handle transaction detection
+  const handleTransactionDetected = useCallback((transaction: any) => {
+    console.log('Transaction detected:', transaction);
+
+    // Show a notification with the transaction details
+    showTransactionNotification(
+      "New Transaction Detected",
+      `Amount: Ksh ${transaction.amount} \nMerchant: ${transaction.merchant}\nTime: ${transaction.date} ${transaction.time}`,
+      transaction
+    ).then((notificationId) => {
+      console.log('Notification shown with ID:', notificationId);
+    }).catch((error) => {
+      console.error('Error showing notification:', error);
+
+      // If notification fails, navigate directly to add transaction screen
+      router.push({
+        pathname: "/screens/add-transaction",
+        params: {
+          transactionId: transaction.transactionId,
+          merchant: transaction.merchant,
+          amount: transaction.amount,
+          date: transaction.date,
+          time: transaction.time,
+          description: "",
+        }
       });
-
-      // Register background handler using the new subscription pattern
-      const subscription = AppState.addEventListener("change", handleAppStateChange);
-
-      // Initial listen for sms messages
-      handleSMSReceived();
-
-      // Removes the subscription on component unmount
-      return () => {
-        subscription.remove();
-      };
-    } catch (error) {
-      console.error('Error initializing SMS listener:', error);
-      return () => {}; // Empty cleanup function
-    }
+    });
   }, []);
 
-  useEffect(() => {
-    try {
-      // Configure push notification handling
-      PushNotification.configure({
-        // Called when a remote or local notification is opened or received
-        onNotification: function (notification) {
-          console.log("NOTIFICATION:", notification);
-          if (notification.action === "Add Description") {
-            router.push({
-              pathname: "/screens/add-transaction",
-              params: notification.userInfo
-            });
+  // Listen for SMS messages when app becomes active
+  const handleAppStateChange = useCallback((nextAppState: string) => {
+    if (nextAppState === "active" && user && isAndroid) {
+      console.log('App became active, starting SMS listener');
+
+      // Start listening for M-PESA transactions
+      try {
+        listenForMpesaTransactions(
+          handleTransactionDetected,
+          (error: string) => {
+            console.error('Error listening for transactions:', error);
           }
-
-          // Required on iOS only
-          // notification.finish(PushNotificationIOS.FetchResult.NoData);
-        },
-
-        // IOS ONLY
-        permissions: {
-          alert: true,
-          badge: true,
-          sound: true,
-        },
-
-        // Should the initial notification be popped automatically
-        popInitialNotification: true,
-
-        /**
-         * (optional) default: true
-         * - Specified if permissions (ios) and token (android and ios) will requested or not,
-         * - if not, you must call PushNotificationsHandler.requestPermissions() later
-         */
-        requestPermissions: true,
-      });
-    } catch (error) {
-      console.error('Error configuring push notifications:', error);
+        ).catch((error) => {
+          console.error('Failed to start SMS listener:', error);
+        });
+      } catch (error) {
+        console.error('Exception when starting SMS listener:', error);
+      }
     }
-  }, []);
+  }, [user, isAndroid, handleTransactionDetected]);
 
-  const handleAppStateChange = (nextAppState) => {
-    if (nextAppState === "active") {
-      handleSMSReceived();
-    }
-  };
-
-  const handleSMSReceived = () => {
-    // Check if we have the user authenticated
-    if (!user) {
-      console.log("User not authenticated, skipping SMS check");
+  // Set up notification response handler
+  useEffect(() => {
+    // Skip if not on Android or user not authenticated
+    if (!isAndroid || !user) {
       return;
     }
 
-    try {
-      // Verify SmsAndroid is available
-      if (!SmsAndroid || typeof SmsAndroid.list !== 'function') {
-        console.error('SmsAndroid module not available or not properly initialized');
-        return;
-      }
-      SmsAndroid.list(
-        JSON.stringify({
-          box: "inbox",
-          minDate: new Date().getTime() - 5 * 60 * 1000, // Last 5 minutes
-        }),
-        (fail) => {
-          console.log("Failed to get SMS with error:", fail);
-        },
-        (count, smsList) => {
-          console.log("New SMS messages:", count);
-          if (count > 0) {
-            try {
-              const parsedList = JSON.parse(smsList);
-              parsedList.forEach((sms) => {
-                if (senderNames.includes(sms.address)) {
-                  console.log("Found message from:", sms.address);
-                  console.log("Message body:", sms.body);
+    // Set up notification response handler
+    notificationSubscription.current = addNotificationResponseReceivedListener((response) => {
+      console.log('Notification response received:', response);
 
-                  // Process only messages that match your SMS text format
-                  const transactionRegex =
-                    /You have sent Ksh([\d,.]+)\s*to\s*([\w\s]+)\s*on\s*([\d/]+)\s*at\s*([\d:]+\s*[AP]M).*\s*Transaction ID:\s*([\w\d]+)/i;
-                  const match = sms.body.match(transactionRegex);
+      // Get the transaction data from the notification
+      const transactionData = response.notification.request.content.data;
 
-                  if (match) {
-                    console.log("Transaction detected in SMS");
-                    const amount = match[1].replace(",", "");
-                    const merchant = match[2].trim();
-                    const date = match[3];
-                    const time = match[4];
-                    const transactionId = match[5];
-
-                    console.log("Extracted transaction details:", { amount, merchant, date, time, transactionId });
-
-                    // Create a notification for the transaction
-                    try {
-                    PushNotification.localNotification({
-                      channelId: "transaction_channel",
-                      title: "New Transaction Detected",
-                      message: `Amount: Ksh ${amount} \nMerchant: ${merchant}\nTime: ${date} ${time}\nTransaction ID: ${transactionId}`,
-                      userInfo: {
-                        transactionId,
-                        merchant,
-                        amount,
-                        date,
-                        time,
-                        description: "",
-                      },
-                      actions: ["Add Description"],
-                    });
-                    console.log("Notification created successfully");
-                  } catch (notificationError) {
-                    console.error("Error creating notification:", notificationError);
-                  }
-                } else {
-                  console.log("SMS does not match transaction format");
-                }
-              }
-            });
-          } catch (parseError) {
-            console.error("Error parsing SMS list:", parseError);
+      // Navigate to add transaction screen
+      if (transactionData) {
+        router.push({
+          pathname: "/screens/add-transaction",
+          params: {
+            transactionId: transactionData.transactionId,
+            merchant: transactionData.merchant,
+            amount: transactionData.amount,
+            date: transactionData.date,
+            time: transactionData.time,
+            description: "",
           }
-        }
+        });
       }
-    );
-    } catch (error) {
-      console.error("Error in SMS handling:", error);
+    });
+
+    // Clean up subscription on unmount
+    return () => {
+      if (notificationSubscription.current) {
+        notificationSubscription.current.remove();
+      }
+    };
+  }, [isAndroid, user]);
+
+  // Set up app state change listener
+  useEffect(() => {
+    // Skip if not on Android
+    if (!isAndroid) {
+      return;
     }
-  };
+
+    // Register app state change listener
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+    // Initial check when component mounts
+    if (AppState.currentState === "active" && user) {
+      handleAppStateChange("active");
+    }
+
+    // Clean up subscription on unmount
+    return () => {
+      subscription.remove();
+    };
+  }, [isAndroid, handleAppStateChange, user]);
 
   // This component doesn't render anything
   return null;

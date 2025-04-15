@@ -2,43 +2,20 @@
 // This is a mock implementation that will be replaced with actual API calls
 
 import axios from 'axios';
-import { auth, getTokenWithRetry } from '../config/firebaseConfig';
+import { auth } from '../config/firebaseConfig';
 import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
 
-// Base URL for the API - this is different depending on platform
-const getBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    // For web, use localhost
-    return 'http://localhost:8080';
-  } else if (Platform.OS === 'android') {
-    // For Android devices, use ngrok URL
-    return 'https://fff0-102-0-10-158.ngrok-free.app';
-  } else {
-    // For iOS
-    return 'https://fff0-102-0-10-158.ngrok-free.app';
-  }
-};
+// Import shared API utilities
+import { API_BASE_URL, getToken } from './apiUtils';
 
-const API_BASE_URL = getBaseUrl();
-console.log("Using API base URL:", API_BASE_URL);
-
-// Helper function to get the token
-const getToken = async () => {
-  try {
-    const token = await getTokenWithRetry();
-    console.log('Successfully retrieved token');
-    return token;
-  } catch (error) {
-    console.error("Error getting token:", error);
-    Toast.show({
-      type: 'error',
-      text1: 'Authentication Error',
-      text2: 'Failed to get authentication token. Please log in again.',
-      position: 'bottom',
-    });
-    throw error;
+// Import AI service functions - using a function to avoid circular dependency
+let aiServiceModule: any = null;
+const getAIService = () => {
+  if (!aiServiceModule) {
+    aiServiceModule = require('./aiService').default;
   }
+  return aiServiceModule;
 };
 
 // Function to make API requests with authentication
@@ -383,16 +360,29 @@ export const deleteTransaction = async (transactionId: string) => {
 // Categories
 export const fetchCategories = async () => {
   try {
+    console.log('Fetching categories from API');
     const response = await apiRequest('get', '/api/expenses/categories/');
+    console.log('Raw categories response:', response);
 
     // Validate response
     if (Array.isArray(response)) {
       // Sanitize category data to ensure they have proper format
-      return response.map(category => ({
+      const processedCategories = response.map(category => ({
         id: category.id?.toString() || '',
         name: category.name?.toString() || `Category ${category.id}`,
         // Include any other properties if needed
       }));
+      console.log('Processed categories:', processedCategories);
+      return processedCategories;
+    } else if (response && response.results && Array.isArray(response.results)) {
+      // Handle paginated response
+      console.log('Received paginated categories response');
+      const processedCategories = response.results.map(category => ({
+        id: category.id?.toString() || '',
+        name: category.name?.toString() || `Category ${category.id}`,
+      }));
+      console.log('Processed categories from paginated response:', processedCategories);
+      return processedCategories;
     } else {
       console.warn('Unexpected categories response format:', response);
       return [];
@@ -405,24 +395,68 @@ export const fetchCategories = async () => {
 
 export const fetchSubCategories = async (categoryId: string) => {
   try {
-    const response = await apiRequest('get', `/api/expenses/subcategories/?category_id=${categoryId}`);
+    console.log(`Fetching subcategories for category ID: ${categoryId}`);
+    // Try the correct endpoint format
+    const response = await apiRequest('get', `/api/expenses/subcategory-lookup/?category=${categoryId}`);
+    console.log('Subcategories response:', response);
 
     // Validate response
     if (Array.isArray(response)) {
       // Sanitize subcategory data to ensure they have proper format
-      return response.map(subcategory => ({
+      const processedData = response.map(subcategory => ({
         id: subcategory.id?.toString() || '',
         name: subcategory.name?.toString() || `Subcategory ${subcategory.id}`,
         category_id: categoryId,
         // Include any other properties if needed
       }));
+      console.log('Processed subcategories:', processedData);
+      return processedData;
+    } else if (response && response.results && Array.isArray(response.results)) {
+      // Handle paginated response
+      console.log('Received paginated subcategories response');
+      const processedData = response.results.map(subcategory => ({
+        id: subcategory.id?.toString() || '',
+        name: subcategory.name?.toString() || `Subcategory ${subcategory.id}`,
+        category_id: categoryId,
+      }));
+      console.log('Processed subcategories from paginated response:', processedData);
+      return processedData;
     } else {
       console.warn('Unexpected subcategories response format:', response);
       return [];
     }
   } catch (error) {
     console.error('Error fetching subcategories:', error);
-    throw error;
+    // Try fallback endpoint if the first one fails
+    try {
+      console.log(`Trying fallback endpoint for subcategories with category ID: ${categoryId}`);
+      const fallbackResponse = await apiRequest('get', `/api/expenses/subcategories/?category=${categoryId}`);
+      console.log('Fallback subcategories response:', fallbackResponse);
+
+      if (Array.isArray(fallbackResponse)) {
+        const processedData = fallbackResponse.map(subcategory => ({
+          id: subcategory.id?.toString() || '',
+          name: subcategory.name?.toString() || `Subcategory ${subcategory.id}`,
+          category_id: categoryId,
+        }));
+        console.log('Processed subcategories from fallback:', processedData);
+        return processedData;
+      } else if (fallbackResponse && fallbackResponse.results && Array.isArray(fallbackResponse.results)) {
+        // Handle paginated response
+        console.log('Received paginated subcategories response from fallback');
+        const processedData = fallbackResponse.results.map(subcategory => ({
+          id: subcategory.id?.toString() || '',
+          name: subcategory.name?.toString() || `Subcategory ${subcategory.id}`,
+          category_id: categoryId,
+        }));
+        console.log('Processed subcategories from paginated fallback response:', processedData);
+        return processedData;
+      }
+      return [];
+    } catch (fallbackError) {
+      console.error('Error fetching subcategories from fallback endpoint:', fallbackError);
+      return [];
+    }
   }
 };
 
@@ -450,66 +484,24 @@ export const deleteSubcategory = async (subcategoryId: string) => {
   return apiRequest('delete', `/api/expenses/subcategories/${subcategoryId}/`);
 };
 
-// ML Model
-const getHeaders = async () => {
-  const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
 
-  // Log token details for debugging
-  if (token) {
-    console.log("Token available for headers");
-    console.log("- Token length:", token.length);
-    console.log("- First 10 chars:", token.substring(0, 10));
-  }
 
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
-
-// Investment Portfolio functions are defined below
-
+// AI-related functions now use the centralized AI service (aiService.ts)
 export const getGeminiPrediction = async (description: string) => {
-  try {
-    // Ensure proper URL construction
-    const url = `${API_BASE_URL}/api/expenses/predict/gemini/`;
-    console.log('Gemini prediction URL:', url);
-
-    const response = await axios.post(
-      url,
-      { description },
-      { headers: await getHeaders() }
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Error getting Gemini prediction:', error);
-    throw error;
-  }
+  const aiService = getAIService();
+  return aiService.getGeminiPrediction(description);
 };
 
 export const getCustomPrediction = async (description: string, merchant: string) => {
-  try {
-    // Ensure proper URL construction
-    const url = `${API_BASE_URL}/api/expenses/predict/custom/`;
-    console.log('Custom prediction URL:', url);
-
-    const response = await axios.post(
-      url,
-      { description, merchant },
-      { headers: await getHeaders() }
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Error getting custom model prediction:', error);
-    throw error;
-  }
+  const aiService = getAIService();
+  return aiService.getCustomModelPrediction(description, merchant);
 };
 
 export const getCategoryPrediction = async (description: string) => {
   try {
     console.log("Getting prediction for:", description);
-    const response = await apiRequest('post', '/api/expenses/predict/', { description });
+    const aiService = getAIService();
+    const response = await aiService.getExpensePrediction(description);
     console.log("Raw prediction response:", response);
     return response;
   } catch (error) {
@@ -519,30 +511,103 @@ export const getCategoryPrediction = async (description: string) => {
 };
 
 export const getCustomModelPrediction = async (description: string) => {
-  return apiRequest('post', '/api/expenses/predict/custom/', { description });
+  const aiService = getAIService();
+  return aiService.getCustomModelPrediction(description);
 };
 
 export const retrainCustomModel = async () => {
-  return apiRequest('post', '/api/expenses/model/retrain/');
+  const aiService = getAIService();
+  return aiService.retrainCustomModel();
 };
 
 // Chatbot
 export const getChatbotResponse = async (message: string) => {
-  return apiRequest('post', '/api/expenses/chatbot/', { message });
+  const aiService = getAIService();
+  return aiService.getChatbotResponse(message);
 };
 
-// User Profile (Expenses)
+// User Profile (General)
 export const fetchUserGeneralProfile = async () => {
-  return apiRequest('get', '/api/expenses/user/profile/');
+  try {
+    // Try to get user data from the investment profiles endpoint
+    const profilesResponse = await apiRequest('get', '/api/investment/profiles/');
+    console.log('User profiles response:', profilesResponse);
+
+    // Handle paginated response
+    if (profilesResponse && profilesResponse.results && Array.isArray(profilesResponse.results) && profilesResponse.results.length > 0) {
+      // Return the user data from the first profile
+      const profile = profilesResponse.results[0];
+      console.log('Found user profile:', profile);
+
+      if (profile.user) {
+        // Add the profile data to the user object
+        const userData = {
+          ...profile.user,
+          profile: {
+            risk_tolerance: profile.risk_tolerance,
+            investment_experience: profile.investment_experience,
+            investment_timeline: profile.investment_timeline,
+            investment_goals: profile.investment_goals
+          }
+        };
+        console.log('Returning user data with profile:', userData);
+        return userData;
+      }
+      return profile.user;
+    }
+    // Handle non-paginated array response
+    else if (Array.isArray(profilesResponse) && profilesResponse.length > 0) {
+      // Return the user data from the first profile
+      const profile = profilesResponse[0];
+      console.log('Found user profile (non-paginated):', profile);
+
+      if (profile.user) {
+        // Add the profile data to the user object
+        const userData = {
+          ...profile.user,
+          profile: {
+            risk_tolerance: profile.risk_tolerance,
+            investment_experience: profile.investment_experience,
+            investment_timeline: profile.investment_timeline,
+            investment_goals: profile.investment_goals
+          }
+        };
+        console.log('Returning user data with profile:', userData);
+        return userData;
+      }
+      return profile.user;
+    } else {
+      // If no profiles, try to get the current user data from auth endpoint
+      try {
+        const response = await apiRequest('get', '/api/auth/user/');
+        console.log('User data from auth endpoint:', response);
+        return response;
+      } catch (authError) {
+        console.error('Error fetching user data from auth endpoint:', authError);
+        // Return a default user object
+        return { username: 'User', email: 'user@example.com' };
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching user profiles:', error);
+    // Return a default user object
+    return { username: 'User', email: 'user@example.com' };
+  }
 };
 
 export const updateUserGeneralProfile = async (profileData: any) => {
-  return apiRequest('put', '/api/expenses/user/profile/', profileData);
+  try {
+    return apiRequest('put', '/api/auth/user/', profileData);
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
 };
 
 // Model Metrics
 export const getModelMetrics = async () => {
-  return apiRequest('get', '/api/expenses/model-metrics/');
+  const aiService = getAIService();
+  return aiService.getModelMetrics();
 };
 
 // Transaction Statistics
@@ -572,7 +637,15 @@ export const deleteInvestment = async (investmentId: string) => {
 };
 
 export const getInvestmentRecommendations = async (amount: number, riskLevel: string) => {
-  return apiRequest('get', `/api/investment/recommendations/?amount=${amount}&risk_level=${riskLevel}`);
+  // Create a simple user profile object with the amount and risk level
+  const userProfile = {
+    amount: amount,
+    risk_level: riskLevel
+  };
+
+  // Use the AI service to get recommendations
+  const aiService = getAIService();
+  return aiService.getInvestmentRecommendations(userProfile);
 };
 
 export const getInvestmentPerformance = async (investmentId: string) => {
@@ -581,8 +654,28 @@ export const getInvestmentPerformance = async (investmentId: string) => {
 
 export const getPortfolioSummary = async () => {
   try {
+    // First try to get the portfolio summary from the regular API
     const response = await apiRequest('get', '/api/investment/portfolio/summary/');
-    return response.data;
+
+    // If successful, try to enhance it with AI analysis
+    try {
+      if (response && response.data && response.data.id) {
+        const aiService = getAIService();
+        const aiAnalysis = await aiService.getPortfolioAnalysis(response.data.id);
+        // Merge the AI analysis with the regular portfolio data
+        return {
+          ...response.data,
+          risk_assessment: aiAnalysis.risk_assessment,
+          diversification_score: aiAnalysis.diversification_score,
+          improvement_suggestions: aiAnalysis.improvement_suggestions
+        };
+      }
+      return response.data;
+    } catch (aiError) {
+      console.error('Error getting AI portfolio analysis:', aiError);
+      // Return the regular data if AI analysis fails
+      return response.data;
+    }
   } catch (error) {
     console.error('Error fetching portfolio summary:', error);
     // Return a default portfolio structure if the API fails

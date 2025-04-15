@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
+import GiftedDonutChart from './GiftedDonutChart';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface DonutChartProps {
@@ -90,29 +90,13 @@ const WebDonutChart: React.FC<DonutChartProps> = ({
   };
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
-      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
-      <View style={styles.chartContainer}>
-        <PieChart
-          data={pieData}
-          width={width}
-          height={height}
-          chartConfig={chartConfig}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          center={[width / 4, 0]} // Center the chart
-          hasLegend={true}
-          avoidFalseZero
-        />
-
-        {/* Center text to make it look like a donut */}
-        <View style={[styles.centerText, dynamicStyles.centerText, { left: width / 2 - 40, top: height / 2 - 30 }]}>
-          <Text style={[styles.totalLabel, dynamicStyles.totalLabel]}>Total</Text>
-          <Text style={[styles.totalValue, dynamicStyles.totalValue]}>${total.toFixed(0)}</Text>
-        </View>
-      </View>
-    </View>
+    <GiftedDonutChart
+      data={data}
+      title={title}
+      width={width}
+      height={height}
+      colors={colors}
+    />
   );
 };
 

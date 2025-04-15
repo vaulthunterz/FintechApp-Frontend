@@ -12,8 +12,8 @@ import {
   RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
-import { LineChart, PieChart } from "react-native-chart-kit";
-import FinancialDataVisualizer from "../components/FinancialDataVisualizer";
+// ExpenseChart is used in the transactions screen
+import FinancialDataVisualizer from "../components/charts/FinancialDataVisualizer";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -92,8 +92,7 @@ const HomeScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<ChartData | null>(null);
-  const [pieChartData, setPieChartData] = useState<PieChartData[]>([]);
+  // Removed unused chart state variables
   const [token, setToken] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -553,35 +552,7 @@ const HomeScreen = () => {
               showFilters={true}
             />
 
-            {/* Legacy charts kept for reference - can be removed */}
-            {false && chartData && (
-              <View style={styles.chartContainer}>
-                <LineChart
-                  data={chartData as any}
-                  width={screenWidth}
-                  height={220}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={styles.chart}
-                />
-              </View>
-            )}
-
-            {false && pieChartData.length > 0 && (
-              <View style={styles.pieChartContainer}>
-                <Text style={styles.sectionTitle}>Top Expense Categories</Text>
-                <PieChart
-                  data={pieChartData as any}
-                  width={screenWidth}
-                  height={220}
-                  chartConfig={chartConfig}
-                  accessor="amount"
-                  backgroundColor="transparent"
-                  paddingLeft="15"
-                  avoidFalseZero
-                />
-              </View>
-            )}
+            {/* Legacy charts removed and replaced with Victory Native charts */}
           </View>
 
           <View style={styles.recentTransactionsContainer}>

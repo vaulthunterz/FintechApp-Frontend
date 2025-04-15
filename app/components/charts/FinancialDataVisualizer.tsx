@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { LineChart, PieChart } from 'react-native-chart-kit';
-import { 
-  BarChartComponent, 
-  AreaChartComponent, 
-  DonutChartComponent, 
-  TimeSeriesChartComponent, 
-  HeatMapComponent,
+import {
+  GiftedBarChart,
+  GiftedAreaChart,
+  GiftedDonutChart,
+  GiftedTimeSeriesChart,
+  GiftedHeatMapComponent,
   ChartSelector,
   ChartType
 } from './index';
@@ -36,7 +35,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 }) => {
   const [selectedChart, setSelectedChart] = useState<ChartType>('line');
   const [availableCharts, setAvailableCharts] = useState<ChartType[]>(['line', 'bar', 'pie', 'donut']);
-  
+
   // Chart data states
   const [barData, setBarData] = useState<any>(null);
   const [pieData, setPieData] = useState<any>(null);
@@ -123,7 +122,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       x: item.category,
       y: item.amount
     }));
-    
+
     // Prepare area chart data (monthly expenses by category)
     // This is a simplified example - in a real app, you'd group by month
     const areaChartData = [
@@ -152,7 +151,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     // This is a simplified example with random data
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const times = ["Morning", "Afternoon", "Evening", "Night"];
-    
+
     const heatmapData = [];
     for (let i = 0; i < days.length; i++) {
       for (let j = 0; j < times.length; j++) {
@@ -161,7 +160,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
         heatmapData.push({ x: i, y: j, heat });
       }
     }
-    
+
     setHeatMapData({
       data: heatmapData,
       xLabels: days,
@@ -173,7 +172,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     if (pieChartData.length > 0) charts.push('pie', 'donut');
     if (transactions.length > 5) charts.push('area', 'timeSeries');
     if (transactions.length > 10) charts.push('heatmap');
-    
+
     setAvailableCharts(charts);
   }, [transactions, timePeriod]);
 
@@ -200,42 +199,35 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     switch (selectedChart) {
       case 'bar':
         return barData ? (
-          <BarChartComponent
+          <GiftedBarChart
             data={barData}
             title="Income vs. Expenses"
             yAxisLabel="Amount"
             colors={['#4CAF50', '#F44336', '#1976D2']}
           />
         ) : null;
-      
+
       case 'pie':
         return pieData && pieData.length > 0 ? (
-          <View style={styles.chartContainer}>
-            <PieChart
-              data={pieData}
-              width={width}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              avoidFalseZero
-            />
-          </View>
-        ) : null;
-      
-      case 'donut':
-        return pieData && pieData.length > 0 ? (
-          <DonutChartComponent
+          <GiftedDonutChart
             data={pieData.map(item => ({ x: item.name, y: item.amount }))}
             title="Expense Categories"
             colors={pieData.map(item => item.color)}
           />
         ) : null;
-      
+
+      case 'donut':
+        return pieData && pieData.length > 0 ? (
+          <GiftedDonutChart
+            data={pieData.map(item => ({ x: item.name, y: item.amount }))}
+            title="Expense Categories"
+            colors={pieData.map(item => item.color)}
+          />
+        ) : null;
+
       case 'area':
         return areaData ? (
-          <AreaChartComponent
+          <GiftedAreaChart
             data={areaData}
             title="Expense Trends by Category"
             yAxisLabel="Amount"
@@ -243,10 +235,10 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             legendItems={pieData?.map(item => ({ name: item.name, color: item.color })) || []}
           />
         ) : null;
-      
+
       case 'timeSeries':
         return timeSeriesData ? (
-          <TimeSeriesChartComponent
+          <GiftedTimeSeriesChart
             data={timeSeriesData}
             title="Monthly Expense Trend"
             yAxisLabel="Amount"
@@ -254,10 +246,10 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             legendItems={[{ name: 'Expenses', color: '#1976d2' }]}
           />
         ) : null;
-      
+
       case 'heatmap':
         return heatMapData ? (
-          <HeatMapComponent
+          <GiftedHeatMapComponent
             data={heatMapData.data}
             title="Spending Patterns (Day vs. Time)"
             xAxisLabel="Day of Week"
@@ -266,20 +258,17 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             yLabels={heatMapData.yLabels}
           />
         ) : null;
-      
+
       case 'line':
       default:
         return lineData ? (
-          <View style={styles.chartContainer}>
-            <LineChart
-              data={lineData}
-              width={width}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
-          </View>
+          <GiftedTimeSeriesChart
+            data={[lineData.datasets[0].data.map((y, i) => ({ x: lineData.labels[i], y }))]}
+            title="Income vs. Expenses"
+            yAxisLabel="Amount"
+            xAxisLabel="Category"
+            legendItems={[{ name: 'Overview', color: '#1e88e5' }]}
+          />
         ) : null;
     }
   };

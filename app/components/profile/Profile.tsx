@@ -7,8 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
-  TextInput,
-  Alert
+  TextInput
 } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,6 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import api from '../../services/api';
 import ProfileAnalytics from './ProfileAnalytics';
+import UserProfileManagement from './UserProfileManagement';
 
 interface ProfileData {
   id?: string;
@@ -182,7 +182,7 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
       } finally {
         setLoading(false);
       }
-    }, []);
+    }, [profile?.risk_tolerance]);
 
   // Helper function to determine investment style based on risk tolerance
   const getInvestmentStyleFromRisk = (riskTolerance: number | string | undefined): string => {
@@ -238,20 +238,24 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
     return { stocks, bonds, cash };
   };
 
-  // Initial data fetch on component mount
+  // Initial data fetch on component mount - only if in investment portfolio mode
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isInvestmentPortfolio) {
+      fetchData();
+    }
+  }, [fetchData, isInvestmentPortfolio]);
 
-  // Refresh data when the screen comes into focus
+  // Refresh data when the screen comes into focus - only if in investment portfolio mode
   useFocusEffect(
     useCallback(() => {
-      console.log('Profile screen focused, refreshing data...');
-      fetchData();
+      if (isInvestmentPortfolio) {
+        console.log('Investment Portfolio screen focused, refreshing data...');
+        fetchData();
+      }
       return () => {
         // Cleanup function when screen loses focus (if needed)
       };
-    }, [fetchData])
+    }, [fetchData, isInvestmentPortfolio])
   );
 
   const handleChange = (name: keyof ProfileData, value: string | number) => {
@@ -373,6 +377,17 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
     },
   };
 
+  // If not investment portfolio, show user profile management instead
+  // Do this check BEFORE checking loading state
+  if (!isInvestmentPortfolio) {
+    // Cancel any loading state to prevent background API calls
+    if (loading) {
+      setLoading(false);
+    }
+    return <UserProfileManagement />;
+  }
+
+  // Only show loading indicator for investment portfolio mode
   if (loading) {
     return (
       <View style={[styles.loadingContainer, dynamicStyles.container]}>
@@ -382,7 +397,7 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
   }
 
   // Add detailed debug logging
-  console.log('Profile render state:', {
+  console.log('Investment Portfolio render state:', {
     showAnalytics,
     hasProfile: !!profile,
     profileData: profile,
@@ -394,7 +409,7 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
 
   return (
     <ScrollView style={[styles.container, dynamicStyles.container]}>
-      <Text style={[styles.title, dynamicStyles.title]}>{isInvestmentPortfolio ? 'Your Investment Portfolio' : 'Your Profile'}</Text>
+      <Text style={[styles.title, dynamicStyles.title]}>Your Investment Portfolio</Text>
 
       {/* Always render the analytics component for debugging */}
       {profile ? (
@@ -405,8 +420,8 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
         />
       ) : (
         <View style={[styles.debugContainer, { backgroundColor: colors.card }]}>
-          <Text style={[styles.debugText, dynamicStyles.debugText]}>Profile Analytics would appear here</Text>
-          <Text style={[styles.debugText, dynamicStyles.debugText]}>Profile data not loaded yet</Text>
+          <Text style={[styles.debugText, dynamicStyles.debugText]}>Portfolio Analytics would appear here</Text>
+          <Text style={[styles.debugText, dynamicStyles.debugText]}>Portfolio data not loaded yet</Text>
         </View>
       )}
 
@@ -507,70 +522,27 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
         </View>
       </View>
 
-      {/* Only show investment questionnaire update in investment portfolio view */}
-      {isInvestmentPortfolio ? (
-        <View style={[styles.card, dynamicStyles.card]}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Portfolio Management</Text>
-          <View style={[styles.divider, dynamicStyles.divider]} />
+      {/* Portfolio Management section for investment portfolio view */}
+      <View style={[styles.card, dynamicStyles.card]}>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Portfolio Management</Text>
+        <View style={[styles.divider, dynamicStyles.divider]} />
 
-          <TouchableOpacity
-            style={[styles.accountButton, dynamicStyles.primaryButton]}
-            onPress={() => router.push('/screens/investment-questionnaire')}
-          >
-            <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Update Investment Questionnaire</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
+        <TouchableOpacity
+          style={[styles.accountButton, dynamicStyles.primaryButton]}
+          onPress={() => router.push('/screens/investment-questionnaire')}
+        >
+          <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Update Investment Questionnaire</Text>
+        </TouchableOpacity>
 
-      {/* Account management section only shown in regular profile view, not in investment portfolio */}
-      {!isInvestmentPortfolio && (
-        <View style={[styles.card, dynamicStyles.card]}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Account Management</Text>
-          <View style={[styles.divider, dynamicStyles.divider]} />
+        <TouchableOpacity
+          style={[styles.accountButton, dynamicStyles.primaryButton]}
+          onPress={() => router.push('/screens/profile')}
+        >
+          <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Go to User Profile</Text>
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity
-            style={[styles.accountButton, dynamicStyles.primaryButton]}
-            onPress={() => router.push('/screens/investment-questionnaire')}
-          >
-            <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Update Investment Questionnaire</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.accountButton, dynamicStyles.accountButton]}
-            onPress={() => router.push('/screens/change-password')}
-          >
-            <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Change Password</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.accountButton, dynamicStyles.dangerButton]}
-            onPress={() => {
-              // Show confirmation dialog before deleting account
-              Alert.alert(
-                'Delete Account',
-                'Are you sure you want to delete your account? This action cannot be undone.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      // Implement account deletion logic here
-                      Toast.show({
-                        type: 'info',
-                        text1: 'Feature Coming Soon',
-                        text2: 'Account deletion will be available in a future update.'
-                      });
-                    }
-                  }
-                ]
-              );
-            }}
-          >
-            <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Delete Account</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </ScrollView>
   );
 };

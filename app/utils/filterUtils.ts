@@ -24,19 +24,19 @@ export const filterTransactions = (
   return transactions.filter(transaction => {
     // Apply date filter
     if (filters.startDate && filters.endDate) {
-      const transactionDate = transaction.time_of_transaction 
-        ? parseISO(transaction.time_of_transaction) 
-        : transaction.date 
-          ? parseISO(transaction.date) 
+      const transactionDate = transaction.time_of_transaction
+        ? parseISO(transaction.time_of_transaction)
+        : transaction.date
+          ? parseISO(transaction.date)
           : null;
-      
+
       if (transactionDate) {
         try {
           const isWithinDateRange = isWithinInterval(transactionDate, {
             start: filters.startDate,
             end: filters.endDate
           });
-          
+
           if (!isWithinDateRange) {
             return false;
           }
@@ -46,18 +46,18 @@ export const filterTransactions = (
         }
       }
     }
-    
+
     // Apply category filter
     if (filters.categories.length > 0) {
       const categoryName = typeof transaction.category === 'string'
         ? transaction.category
         : transaction.category?.name || 'Uncategorized';
-      
+
       if (!filters.categories.includes(categoryName)) {
         return false;
       }
     }
-    
+
     return true;
   });
 };
@@ -67,15 +67,15 @@ export const filterTransactions = (
  */
 export const extractCategories = (transactions: Transaction[]): string[] => {
   const categories = new Set<string>();
-  
+
   transactions.forEach(transaction => {
     const categoryName = typeof transaction.category === 'string'
       ? transaction.category
       : transaction.category?.name || 'Uncategorized';
-    
+
     categories.add(categoryName);
   });
-  
+
   return Array.from(categories).sort();
 };
 
@@ -90,3 +90,13 @@ export const getDefaultFilters = (): FilterOptions => {
     categories: []
   };
 };
+
+// Create a module object
+const filterUtils = {
+  filterTransactions,
+  extractCategories,
+  getDefaultFilters
+};
+
+// Default export for the module
+export default filterUtils;

@@ -6,6 +6,13 @@ import HeatMapComponent from './HeatMapComponent';
 import ChartSelector from './ChartSelector';
 import type { ChartType } from './ChartSelector';
 
+// Import Gifted Chart components
+import GiftedBarChart from './GiftedBarChart';
+import GiftedAreaChart from './GiftedAreaChart';
+import GiftedDonutChart from './GiftedDonutChart';
+import GiftedTimeSeriesChart from './GiftedTimeSeriesChart';
+import GiftedHeatMapComponent from './GiftedHeatMapComponent';
+
 // Named exports
 export {
   BarChartComponent,
@@ -13,7 +20,12 @@ export {
   DonutChartComponent,
   TimeSeriesChartComponent,
   HeatMapComponent,
-  ChartSelector
+  ChartSelector,
+  GiftedBarChart,
+  GiftedAreaChart,
+  GiftedDonutChart,
+  GiftedTimeSeriesChart,
+  GiftedHeatMapComponent
 };
 export type { ChartType };
 
@@ -24,5 +36,10 @@ export default {
   DonutChartComponent,
   TimeSeriesChartComponent,
   HeatMapComponent,
-  ChartSelector
+  ChartSelector,
+  GiftedBarChart,
+  GiftedAreaChart,
+  GiftedDonutChart,
+  GiftedTimeSeriesChart,
+  GiftedHeatMapComponent
 };

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "react-native-toast-message";
 import api from "../services/api";
+import aiService from "../services/aiService";
 import Header from "../components/Header";
 import DrawerMenu from "../components/DrawerMenu";
 import { auth } from "../config/firebaseConfig";
@@ -75,7 +76,8 @@ const ModelMetricsScreen = () => {
   const fetchModelMetrics = async () => {
     try {
       setLoading(true);
-      const response = await api.getModelMetrics();
+      // Use the AI service directly instead of going through the API service
+      const response = await aiService.getModelMetrics();
       setMetrics(response);
     } catch (error) {
       console.error("Error fetching model metrics:", error);
@@ -106,7 +108,8 @@ const ModelMetricsScreen = () => {
   const handleRetrainModel = async () => {
     try {
       setIsTraining(true);
-      const result = await api.retrainCustomModel();
+      // Use the AI service directly instead of going through the API service
+      const result = await aiService.retrainCustomModel();
       // Update metrics with the new training results
       if (result && typeof result === 'object') {
         setMetrics({
@@ -142,7 +145,8 @@ const ModelMetricsScreen = () => {
   const handleBaselineTraining = async () => {
     try {
       setIsTraining(true);
-      const result = await api.retrainCustomModel({ use_baseline: true });
+      // Use the AI service directly with baseline parameter
+      const result = await aiService.retrainCustomModel({ use_baseline: true });
       // Update metrics with the new training results
       if (result && typeof result === 'object') {
         setMetrics({
@@ -190,7 +194,8 @@ const ModelMetricsScreen = () => {
           onPress: async () => {
             try {
               setIsTraining(true);
-              await api.retrainCustomModel({ reset_model: true });
+              // Use the AI service directly with reset parameter
+              await aiService.retrainCustomModel({ reset_model: true });
               Toast.show({
                 type: "success",
                 text1: "Success",
@@ -300,7 +305,7 @@ const ModelMetricsScreen = () => {
 
             <View style={styles.trainingControls}>
               <Text style={styles.sectionTitle}>Training Options</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={styles.trainingButton}
               onPress={handleRetrainModel}
                 disabled={isTraining}
@@ -311,8 +316,8 @@ const ModelMetricsScreen = () => {
                   <Text style={styles.buttonText}>Retrain with My Data</Text>
                 )}
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.trainingButton, styles.baselineButton]}
                 onPress={handleBaselineTraining}
                 disabled={isTraining}
@@ -323,8 +328,8 @@ const ModelMetricsScreen = () => {
                   <Text style={styles.buttonText}>Train with Baseline Data</Text>
                 )}
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.trainingButton, styles.resetButton]}
                 onPress={handleResetModel}
                 disabled={isTraining}
@@ -336,7 +341,7 @@ const ModelMetricsScreen = () => {
                 )}
             </TouchableOpacity>
           </View>
-            
+
             <View style={styles.explanationContainer}>
               <Text style={styles.explanationTitle}>What do these options mean?</Text>
               <Text style={styles.explanationText}>

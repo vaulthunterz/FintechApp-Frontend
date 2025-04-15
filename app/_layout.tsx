@@ -78,6 +78,7 @@ function AppContent({ currentRoute, shouldShowBottomNav, loaded }: { currentRout
             <Stack.Screen name="screens/investment-questionnaire" options={{ headerShown: false }} />
             <Stack.Screen name="screens/profile" options={{ headerShown: false }} />
             <Stack.Screen name="screens/change-password" options={{ headerShown: false }} />
+            <Stack.Screen name="screens/mpesa-history" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
         </View>

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import api from '../services/api';
+import aiService from '../services/aiService';
 
 interface ChatPanelProps {
   onClose?: () => void;
@@ -48,7 +49,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
       useNativeDriver: false,
       friction: 8,
     }).start();
-    
+
     if (!isOpen && onClose) {
       onClose();
     }
@@ -71,10 +72,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
       isUser: true,
       timestamp: new Date(),
     };
-    
+
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setPrompt('');
-    
+
     // Scroll to bottom after adding user message
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -82,26 +83,34 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
 
     try {
       setLoading(true);
-      
-      // In a real implementation, you would call your AI API here
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Determine response based on user message
-      let botResponse = "I'm not sure how to help with that yet.";
-      
-      const lowerPrompt = userMessage.text.toLowerCase();
-      
-      if (lowerPrompt.includes('expense') || lowerPrompt.includes('spend')) {
-        botResponse = "Based on your recent transactions, your highest spending category is Food & Dining.";
-      } else if (lowerPrompt.includes('budget') || lowerPrompt.includes('save')) {
-        botResponse = "I recommend setting a monthly budget for discretionary spending. Would you like me to help you create one?";
-      } else if (lowerPrompt.includes('invest') || lowerPrompt.includes('investment')) {
-        botResponse = "I can provide basic investment advice. What specific information are you looking for?";
-      } else if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
-        botResponse = "Hello! How can I assist with your financial questions today?";
+
+      // Get previous messages for context (excluding the latest user message)
+      const context = messages.map(msg => ({
+        role: msg.isUser ? 'user' : 'assistant',
+        content: msg.text
+      }));
+
+      // Call the AI service to get a response
+      const response = await aiService.getChatbotResponse(userMessage.text, context);
+
+      // Extract the response text
+      let botResponse = response.text || "I'm not sure how to help with that yet.";
+
+      // Fallback to hardcoded responses if AI service fails
+      if (!botResponse || botResponse.trim() === '') {
+        const lowerPrompt = userMessage.text.toLowerCase();
+
+        if (lowerPrompt.includes('expense') || lowerPrompt.includes('spend')) {
+          botResponse = "Based on your recent transactions, your highest spending category is Food & Dining.";
+        } else if (lowerPrompt.includes('budget') || lowerPrompt.includes('save')) {
+          botResponse = "I recommend setting a monthly budget for discretionary spending. Would you like me to help you create one?";
+        } else if (lowerPrompt.includes('invest') || lowerPrompt.includes('investment')) {
+          botResponse = "I can provide basic investment advice. What specific information are you looking for?";
+        } else if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
+          botResponse = "Hello! How can I assist with your financial questions today?";
+        }
       }
-      
+
       // Add bot response
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -109,14 +118,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
         isUser: false,
         timestamp: new Date(),
       };
-      
+
       setMessages(prevMessages => [...prevMessages, botMessage]);
-      
+
       // Scroll to bottom after adding bot response
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-      
+
     } catch (error) {
       console.error("Error in chatbot:", error);
       Toast.show({
@@ -160,8 +169,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
         <Text style={styles.headerText}>AI Assistant</Text>
         <View style={styles.headerButtons}>
           {isOpen && (
-            <TouchableOpacity 
-              style={styles.clearIcon} 
+            <TouchableOpacity
+              style={styles.clearIcon}
               onPress={clearChat}
             >
               <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -176,20 +185,20 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
       </TouchableOpacity>
 
       {isOpen && (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.content}
         >
-          <ScrollView 
+          <ScrollView
             style={styles.messagesContainer}
             ref={scrollViewRef}
             contentContainerStyle={styles.messagesContent}
           >
             {messages.map((message) => (
-              <View 
-                key={message.id} 
+              <View
+                key={message.id}
                 style={[
-                  styles.messageBubble, 
+                  styles.messageBubble,
                   message.isUser ? styles.userBubble : styles.botBubble
                 ]}
               >
@@ -198,7 +207,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
               </View>
             ))}
           </ScrollView>
-          
+
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -337,4 +346,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ChatPanel; 
+export default ChatPanel;

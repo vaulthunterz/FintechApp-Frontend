@@ -135,3 +135,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 // Create a custom hook to use the theme context
 export const useTheme = () => useContext(ThemeContext);
+
+// Default export for the ThemeProvider
+export default ThemeProvider;

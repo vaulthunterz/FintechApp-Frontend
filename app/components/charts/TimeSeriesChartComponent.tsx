@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryLine, VictoryChart, VictoryTheme, VictoryAxis, VictoryLabel, VictoryScatter, VictoryLegend } from 'victory-native';
+import GiftedTimeSeriesChart from './GiftedTimeSeriesChart';
 
 interface TimeSeriesChartProps {
   data: Array<{ x: string | Date; y: number }[]>;
@@ -26,76 +26,16 @@ const TimeSeriesChartComponent: React.FC<TimeSeriesChartProps> = ({
   showPoints = true
 }) => {
   return (
-    <View style={[styles.container, { width }]}>
-      <Text style={styles.title}>{title}</Text>
-      <VictoryChart
-        width={width}
-        height={height}
-        theme={VictoryTheme.material}
-        padding={{ top: 40, bottom: 50, left: 60, right: 20 }}
-      >
-        {legendItems.length > 0 && (
-          <VictoryLegend
-            x={width / 2 - (legendItems.length * 40)}
-            y={10}
-            orientation="horizontal"
-            gutter={20}
-            style={{ 
-              labels: { fontSize: 10 }
-            }}
-            data={legendItems.map(item => ({
-              name: item.name,
-              symbol: { fill: item.color }
-            }))}
-          />
-        )}
-        <VictoryAxis
-          tickLabelComponent={<VictoryLabel angle={-45} textAnchor="end" />}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5 }
-          }}
-          label={xAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={25} />}
-        />
-        <VictoryAxis
-          dependentAxis
-          label={yAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={-40} />}
-          tickFormat={(t) => `$${t}`}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5 }
-          }}
-        />
-        {data.map((dataset, index) => (
-          <React.Fragment key={index}>
-            <VictoryLine
-              data={dataset}
-              style={{
-                data: {
-                  stroke: colors[index % colors.length],
-                  strokeWidth: 2
-                }
-              }}
-              animate={{
-                duration: 500,
-                onLoad: { duration: 300 }
-              }}
-            />
-            {showPoints && (
-              <VictoryScatter
-                data={dataset}
-                size={4}
-                style={{
-                  data: {
-                    fill: colors[index % colors.length]
-                  }
-                }}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </VictoryChart>
-    </View>
+    <GiftedTimeSeriesChart
+      data={data}
+      title={title}
+      width={width}
+      height={height}
+      yAxisLabel={yAxisLabel}
+      xAxisLabel={xAxisLabel}
+      colors={colors}
+      legendItems={legendItems}
+    />
   );
 };
 

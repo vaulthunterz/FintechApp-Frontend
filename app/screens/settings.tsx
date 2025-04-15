@@ -50,7 +50,7 @@ const SettingsScreen = () => {
 
       <ScrollView style={styles.content}>
         <Text style={styles.sectionTitle}>Preferences</Text>
-        
+
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
             <Ionicons name="moon-outline" size={24} color="#555" style={styles.settingIcon} />
@@ -63,7 +63,7 @@ const SettingsScreen = () => {
             thumbColor={darkMode ? "#1e88e5" : "#f4f3f4"}
           />
         </View>
-        
+
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
             <Ionicons name="notifications-outline" size={24} color="#555" style={styles.settingIcon} />
@@ -78,15 +78,18 @@ const SettingsScreen = () => {
         </View>
 
         <Text style={styles.sectionTitle}>Account</Text>
-        
-        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/screens/profile')}>
+
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push({
+          pathname: '/screens/profile',
+          params: { source: 'user' }
+        })}>
           <View style={styles.settingInfo}>
             <Ionicons name="person-outline" size={24} color="#555" style={styles.settingIcon} />
             <Text style={styles.settingText}>Profile</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#aaa" />
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/screens/change-password')}>
           <View style={styles.settingInfo}>
             <Ionicons name="lock-closed-outline" size={24} color="#555" style={styles.settingIcon} />
@@ -96,7 +99,7 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>About</Text>
-        
+
         <TouchableOpacity style={styles.settingItem} onPress={() => {}}>
           <View style={styles.settingInfo}>
             <Ionicons name="information-circle-outline" size={24} color="#555" style={styles.settingIcon} />
@@ -104,7 +107,7 @@ const SettingsScreen = () => {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#aaa" />
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.settingItem} onPress={() => {}}>
           <View style={styles.settingInfo}>
             <Ionicons name="help-circle-outline" size={24} color="#555" style={styles.settingIcon} />
@@ -184,4 +187,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SettingsScreen; 
+export default SettingsScreen;

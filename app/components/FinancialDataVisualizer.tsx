@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { LineChart, PieChart } from 'react-native-chart-kit';
+import { VictoryLine, VictoryChart, VictoryTheme, VictoryAxis, VictoryPie, VictoryLabel } from '../utils/victoryUtils';
 import BarChartComponent from './charts/BarChartComponent';
 import AreaChartComponent from './charts/AreaChartComponent';
 import WebDonutChart from './charts/WebDonutChart';
@@ -258,15 +258,15 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       case 'pie':
         return pieData && pieData.length > 0 ? (
           <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
-            <PieChart
-              data={pieData}
+            <VictoryPie
+              data={pieData.map(item => ({ x: item.name, y: item.amount }))}
               width={width}
               height={220}
-              chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              avoidFalseZero
+              colorScale={pieData.map(item => item.color)}
+              style={{ labels: { fill: colors.text, fontSize: 12 } }}
+              labelRadius={({ innerRadius }) => (innerRadius || 0) + 30}
+              innerRadius={30}
+              padAngle={2}
             />
           </View>
         ) : null;
@@ -318,14 +318,31 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       default:
         return lineData ? (
           <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
-            <LineChart
-              data={lineData as any}
+            <VictoryChart
+              theme={VictoryTheme.material}
               width={width}
               height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
+            >
+              <VictoryAxis
+                style={{
+                  tickLabels: { fill: colors.text, fontSize: 12 }
+                }}
+                tickFormat={(t, i) => lineData.labels[i]}
+              />
+              <VictoryAxis
+                dependentAxis
+                style={{
+                  tickLabels: { fill: colors.text, fontSize: 12 }
+                }}
+              />
+              <VictoryLine
+                data={lineData.datasets[0].data.map((y, i) => ({ x: i, y }))}
+                style={{
+                  data: { stroke: colors.primary, strokeWidth: 3 },
+                }}
+                interpolation="natural"
+              />
+            </VictoryChart>
           </View>
         ) : null;
     }

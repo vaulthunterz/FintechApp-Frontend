@@ -37,4 +37,11 @@ yarn-error.*
 
 app-example
 
+#IDE Specific
 .vscode/
+.idea/
+
+#platform specific build files
+/android/
+/ios/
+

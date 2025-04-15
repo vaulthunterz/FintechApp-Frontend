@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryPie, VictoryLegend, VictoryLabel } from 'victory-native';
+import GiftedDonutChart from './GiftedDonutChart';
 
 interface DonutChartProps {
   data: Array<{ x: string; y: number }>;
@@ -27,7 +27,7 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({
 }) => {
   // Calculate total for percentage
   const total = data.reduce((sum, item) => sum + item.y, 0);
-  
+
   // Format data for display
   const formattedData = data.map(item => ({
     ...item,
@@ -42,46 +42,13 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({
   }));
 
   return (
-    <View style={[styles.container, { width }]}>
-      <Text style={styles.title}>{title}</Text>
-      <View style={styles.chartContainer}>
-        <VictoryPie
-          data={formattedData}
-          width={width}
-          height={height}
-          innerRadius={innerRadius}
-          labelRadius={labelRadius}
-          style={{
-            data: {
-              fill: ({ datum, index }) => colors[index % colors.length]
-            },
-            labels: {
-              fontSize: 10,
-              fill: '#333'
-            }
-          }}
-          animate={{
-            duration: 500,
-            onLoad: { duration: 300 }
-          }}
-          labelComponent={<VictoryLabel style={{ fontSize: 10 }} />}
-        />
-        {showLegend && (
-          <VictoryLegend
-            x={width / 2 - 125}
-            y={height - 50}
-            orientation="horizontal"
-            gutter={20}
-            style={{ 
-              labels: { fontSize: 10 }
-            }}
-            data={legendItems}
-            centerTitle
-            colorScale={colors}
-          />
-        )}
-      </View>
-    </View>
+    <GiftedDonutChart
+      data={data}
+      title={title}
+      width={width}
+      height={height}
+      colors={colors}
+    />
   );
 };
 

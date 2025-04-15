@@ -33,7 +33,9 @@
       "publicPath": "/",
       "build": {
         "babel": {
-          "include": ["expo-router"]
+          "include": [
+            "expo-router"
+          ]
         }
       }
     },
@@ -51,6 +53,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "70c6f843-8bfd-442b-83b9-de602795cff6"
+      }
     }
   }
 }

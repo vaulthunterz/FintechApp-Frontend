@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryBar, VictoryChart, VictoryTheme, VictoryAxis, VictoryLabel } from 'victory-native';
+import GiftedBarChart from './GiftedBarChart';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BarChartProps {
@@ -35,49 +35,15 @@ const BarChartComponent: React.FC<BarChartProps> = ({
   };
 
   return (
-    <View style={[styles.container, dynamicStyles.container, { width }]}>
-      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
-      <VictoryChart
-        width={width}
-        height={height}
-        theme={VictoryTheme.material}
-        domainPadding={{ x: 20 }}
-        padding={{ top: 20, bottom: 50, left: 60, right: 20 }}
-      >
-        <VictoryAxis
-          tickLabelComponent={<VictoryLabel angle={-45} textAnchor="end" />}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5 }
-          }}
-          label={xAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={25} />}
-        />
-        <VictoryAxis
-          dependentAxis
-          label={yAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={-40} />}
-          tickFormat={(t) => `$${t}`}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5 }
-          }}
-        />
-        <VictoryBar
-          data={data}
-          style={{
-            data: {
-              fill: ({ datum, index }) => colors[index % colors.length] || colors[0],
-              width: 20
-            }
-          }}
-          animate={{
-            duration: 500,
-            onLoad: { duration: 300 }
-          }}
-          labels={({ datum }) => `$${datum.y.toFixed(0)}`}
-          labelComponent={<VictoryLabel dy={-10} />}
-        />
-      </VictoryChart>
-    </View>
+    <GiftedBarChart
+      data={data}
+      title={title}
+      width={width}
+      height={height}
+      yAxisLabel={yAxisLabel}
+      xAxisLabel={xAxisLabel}
+      colors={colors}
+    />
   );
 };
 

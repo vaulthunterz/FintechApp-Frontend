@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryTheme, VictoryLabel, VictoryAxis, VictoryChart, VictoryHeatmap } from 'victory-native';
+import GiftedHeatMapComponent from './GiftedHeatMapComponent';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeatMapProps {
@@ -54,59 +54,16 @@ const HeatMapComponent: React.FC<HeatMapProps> = ({
   };
 
   return (
-    <View style={[styles.container, dynamicStyles.container, { width }]}>
-      <Text style={[styles.title, dynamicStyles.title]}>{title}</Text>
-      <VictoryChart
-        width={width}
-        height={height}
-        theme={VictoryTheme.material}
-        domain={{ x: [0, xLabels.length], y: [0, yLabels.length] }}
-        padding={{ top: 40, bottom: 50, left: 60, right: 20 }}
-      >
-        <VictoryAxis
-          tickValues={Array.from({ length: xLabels.length }, (_, i) => i + 0.5)}
-          tickFormat={(t, i) => xLabels[i] || ''}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5, angle: -45, textAnchor: 'end' }
-          }}
-          label={xAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={25} />}
-        />
-        <VictoryAxis
-          dependentAxis
-          tickValues={Array.from({ length: yLabels.length }, (_, i) => i + 0.5)}
-          tickFormat={(t, i) => yLabels[i] || ''}
-          style={{
-            tickLabels: { fontSize: 10, padding: 5 }
-          }}
-          label={yAxisLabel}
-          axisLabelComponent={<VictoryLabel dy={-40} />}
-        />
-        <VictoryHeatmap
-          data={data}
-          style={{
-            data: {
-              fill: ({ datum }) => getHeatColor(datum.heat),
-              stroke: "#ffffff",
-              strokeWidth: 1
-            }
-          }}
-          animate={{
-            duration: 500,
-            onLoad: { duration: 300 }
-          }}
-          labels={({ datum }) => `$${datum.heat.toFixed(0)}`}
-          labelComponent={
-            <VictoryLabel
-              style={{
-                fill: ({ datum }) => (datum.heat > (maxHeat + minHeat) / 2) ? 'white' : 'black',
-                fontSize: 9
-              }}
-            />
-          }
-        />
-      </VictoryChart>
-    </View>
+    <GiftedHeatMapComponent
+      data={data}
+      title={title}
+      width={width}
+      height={height}
+      xAxisLabel={xAxisLabel}
+      yAxisLabel={yAxisLabel}
+      xLabels={xLabels}
+      yLabels={yLabels}
+    />
   );
 };
 
