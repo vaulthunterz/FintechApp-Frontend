@@ -1,0 +1,66 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.{js,css,png,jpg,jpeg,gif,svg}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "**/*.ttf",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Content-Type",
+            "value": "font/ttf"
+          }
+        ]
+      },
+      {
+        "source": "**/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Content-Type",
+            "value": "font/ttf"
+          }
+        ]
+      },
+      {
+        "source": "**/assets/assets/fonts/**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Content-Type",
+            "value": "font/ttf"
+          }
+        ]
+      }
+    ]
+  }
+}

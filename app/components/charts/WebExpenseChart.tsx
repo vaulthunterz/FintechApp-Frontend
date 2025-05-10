@@ -49,7 +49,7 @@ interface WebExpenseChartProps {
 
 const WebExpenseChart: React.FC<WebExpenseChartProps> = ({ data, title, type, period }) => {
   const { colors, isDark } = useTheme();
-  
+
   // If not on web platform, return a placeholder
   if (Platform.OS !== 'web') {
     return (
@@ -101,7 +101,7 @@ const WebExpenseChart: React.FC<WebExpenseChartProps> = ({ data, title, type, pe
             <VictoryAxis
               style={{
                 axis: { stroke: colors.textSecondary },
-                tickLabels: { 
+                tickLabels: {
                   fill: colors.textSecondary,
                   fontSize: 8,
                   angle: -45,
@@ -146,11 +146,11 @@ const WebExpenseChart: React.FC<WebExpenseChartProps> = ({ data, title, type, pe
       {period && (
         <Text style={[styles.period, { color: colors.textSecondary }]}>{period}</Text>
       )}
-      
+
       <View style={styles.chartContainer}>
         {renderChart()}
       </View>
-      
+
       <View style={styles.totalContainer}>
         <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total:</Text>
         <Text style={[styles.totalAmount, { color: colors.text }]}>

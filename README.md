@@ -41,110 +41,50 @@ npx expo start --web      # For Web
 Create a `.env` file in the root directory with the following variables:
 
 ```
-API_URL=http://localhost:8000/api/v1
+API_URL=http://localhost:8000/api
 ```
 
 For production, update the API_URL to point to your deployed backend.
 
 ## Deployment
 
-### Expo Deployment
+### Web Deployment with Firebase
 
-Expo deployment is specifically for the frontend React Native application. Here's how to deploy:
+The web version of the app is deployed to Firebase Hosting. Here's how to deploy:
 
-1. **Configure app.json**:
-   ```json
-   {
-     "expo": {
-       "name": "Expense Categorization App",
-       "slug": "expense-categorization",
-       "version": "1.0.0",
-       "orientation": "portrait",
-       "icon": "./assets/icon.png",
-       "splash": {
-         "image": "./assets/splash.png",
-         "resizeMode": "contain",
-         "backgroundColor": "#ffffff"
-       },
-       "updates": {
-         "fallbackToCacheTimeout": 0
-       },
-       "assetBundlePatterns": ["**/*"],
-       "ios": {
-         "supportsTablet": true,
-         "bundleIdentifier": "com.yourcompany.expensecategorization"
-       },
-       "android": {
-         "adaptiveIcon": {
-           "foregroundImage": "./assets/adaptive-icon.png",
-           "backgroundColor": "#FFFFFF"
-         },
-         "package": "com.yourcompany.expensecategorization"
-       },
-       "web": {
-         "favicon": "./assets/favicon.png"
-       }
-     }
-   }
-   ```
-
-2. **Install EAS CLI**:
+1. **Install Firebase CLI** (if not already installed):
    ```bash
-   npm install -g eas-cli
+   npm install -g firebase-tools
    ```
 
-3. **Login to Expo**:
+2. **Login to Firebase**:
    ```bash
-   eas login
+   firebase login
    ```
 
-4. **Configure EAS**:
+3. **Deploy to Firebase**:
    ```bash
-   eas build:configure
+   npm run deploy-web
    ```
 
-5. **Create a build**:
-   ```bash
-   eas build --platform android
-   eas build --platform ios
-   ```
+   This script will:
+   - Build the web version of your app
+   - Add CDN links for icon fonts
+   - Deploy to Firebase Hosting
 
-6. **Submit to stores**:
-   ```bash
-   eas submit --platform android
-   eas submit --platform ios
-   ```
+### Mobile Deployment
 
-### Environment-Specific Configuration
-
-For managing different environments, create an `eas.json` file:
-
-```json
-{
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "API_URL": "http://localhost:8000/api/v1"
-      }
-    },
-    "production": {
-      "distribution": "store",
-      "env": {
-        "API_URL": "https://your-deployed-backend.com/api/v1"
-      }
-    }
-  }
-}
-```
-
-### Continuous Updates with EAS Update
-
-After initial deployment, you can push updates without app store approval:
+For mobile deployment, you can use EAS Build:
 
 ```bash
-eas update --branch production --message "Fixed bug in expense chart"
+# Configure EAS
+eas build:configure
+
+# Build for Android
+eas build --platform android
+
+# Build for iOS
+eas build --platform ios
 ```
 
 ## Project Structure
