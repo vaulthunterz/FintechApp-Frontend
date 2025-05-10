@@ -11,8 +11,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci && npm run build
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Install Expo CLI
+      - name: Install Expo CLI
+        run: npm install -g expo-cli
+
+      # Build for web
+      - name: Build for web
+        run: npx expo export --platform web
+
+      # Run post-build scripts
+      - name: Run post-build scripts
+        run: |
+          node copy-icon-fonts.js
+          node fix-icons.js
+
+      # Deploy to Firebase
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EXPENSECATEGORIZATION_AUTH }}
