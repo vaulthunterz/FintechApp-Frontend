@@ -1,45 +1,112 @@
-import BarChartComponent from './BarChartComponent';
-import AreaChartComponent from './AreaChartComponent';
-import DonutChartComponent from './DonutChartComponent';
-import TimeSeriesChartComponent from './TimeSeriesChartComponent';
-import HeatMapComponent from './HeatMapComponent';
-import ChartSelector from './ChartSelector';
-import type { ChartType } from './ChartSelector';
+// Export types from ChartTypes
+import type {
+  ChartType,
+  BarChartData,
+  TimeSeriesData,
+  ExpenseData,
+  HeatMapData,
+  LegendItem,
+  BaseChartProps,
+  AxisChartProps,
+  ColoredChartProps,
+  BarChartProps,
+  DonutChartProps,
+  TimeSeriesChartProps,
+  AreaChartProps,
+  HeatMapProps,
+  ExpenseChartProps
+} from './ChartTypes';
 
-// Import Gifted Chart components
-import GiftedBarChart from './GiftedBarChart';
-import GiftedAreaChart from './GiftedAreaChart';
-import GiftedDonutChart from './GiftedDonutChart';
-import GiftedTimeSeriesChart from './GiftedTimeSeriesChart';
-import GiftedHeatMapComponent from './GiftedHeatMapComponent';
+// Export platform-specific components
+import {
+  BarChartComponent,
+  DonutChartComponent,
+  TimeSeriesChartComponent,
+  AreaChartComponent,
+  PlatformExpenseChart,
+  ChartSelector
+} from './PlatformCharts';
+
+// Export Gifted Charts implementations
+import {
+  GiftedBarChart,
+  GiftedDonutChart,
+  GiftedTimeSeriesChart,
+  GiftedAreaChart,
+  GiftedExpenseChart
+} from './GiftedCharts';
+
+// Export Web Charts implementations
+import {
+  WebBarChart,
+  WebDonutChart,
+  WebTimeSeriesChart,
+  WebAreaChart,
+  WebExpenseChart
+} from './WebCharts';
 
 // Named exports
 export {
+  // Platform-specific components
   BarChartComponent,
-  AreaChartComponent,
   DonutChartComponent,
   TimeSeriesChartComponent,
-  HeatMapComponent,
+  AreaChartComponent,
+  PlatformExpenseChart as ExpenseChart,
   ChartSelector,
+
+  // Gifted Charts implementations
   GiftedBarChart,
-  GiftedAreaChart,
   GiftedDonutChart,
   GiftedTimeSeriesChart,
-  GiftedHeatMapComponent
+  GiftedAreaChart,
+  GiftedExpenseChart,
+
+  // Web Charts implementations
+  WebBarChart,
+  WebDonutChart,
+  WebTimeSeriesChart,
+  WebAreaChart,
+  WebExpenseChart
 };
-export type { ChartType };
+
+// Export types
+export type {
+  ChartType,
+  BarChartData,
+  TimeSeriesData,
+  ExpenseData,
+  HeatMapData,
+  LegendItem,
+  BaseChartProps,
+  AxisChartProps,
+  ColoredChartProps,
+  BarChartProps,
+  DonutChartProps,
+  TimeSeriesChartProps,
+  AreaChartProps,
+  HeatMapProps,
+  ExpenseChartProps
+};
 
 // Default export (required by Expo Router)
-export default {
+const ChartComponents = {
   BarChartComponent,
-  AreaChartComponent,
   DonutChartComponent,
   TimeSeriesChartComponent,
-  HeatMapComponent,
+  AreaChartComponent,
+  ExpenseChart: PlatformExpenseChart,
   ChartSelector,
   GiftedBarChart,
-  GiftedAreaChart,
   GiftedDonutChart,
   GiftedTimeSeriesChart,
-  GiftedHeatMapComponent
+  GiftedAreaChart,
+  GiftedExpenseChart,
+  WebBarChart,
+  WebDonutChart,
+  WebTimeSeriesChart,
+  WebAreaChart,
+  WebExpenseChart
 };
+
+export default ChartComponents;

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import {
-  GiftedBarChart,
-  GiftedAreaChart,
-  GiftedDonutChart,
-  GiftedTimeSeriesChart,
-  GiftedHeatMapComponent,
+  BarChartComponent,
+  AreaChartComponent,
+  DonutChartComponent,
+  TimeSeriesChartComponent,
   ChartSelector,
   ChartType
 } from './index';
@@ -199,7 +198,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     switch (selectedChart) {
       case 'bar':
         return barData ? (
-          <GiftedBarChart
+          <BarChartComponent
             data={barData}
             title="Income vs. Expenses"
             yAxisLabel="Amount"
@@ -208,17 +207,9 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
         ) : null;
 
       case 'pie':
-        return pieData && pieData.length > 0 ? (
-          <GiftedDonutChart
-            data={pieData.map(item => ({ x: item.name, y: item.amount }))}
-            title="Expense Categories"
-            colors={pieData.map(item => item.color)}
-          />
-        ) : null;
-
       case 'donut':
         return pieData && pieData.length > 0 ? (
-          <GiftedDonutChart
+          <DonutChartComponent
             data={pieData.map(item => ({ x: item.name, y: item.amount }))}
             title="Expense Categories"
             colors={pieData.map(item => item.color)}
@@ -227,7 +218,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
       case 'area':
         return areaData ? (
-          <GiftedAreaChart
+          <AreaChartComponent
             data={areaData}
             title="Expense Trends by Category"
             yAxisLabel="Amount"
@@ -238,7 +229,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
       case 'timeSeries':
         return timeSeriesData ? (
-          <GiftedTimeSeriesChart
+          <TimeSeriesChartComponent
             data={timeSeriesData}
             title="Monthly Expense Trend"
             yAxisLabel="Amount"
@@ -248,21 +239,13 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
         ) : null;
 
       case 'heatmap':
-        return heatMapData ? (
-          <GiftedHeatMapComponent
-            data={heatMapData.data}
-            title="Spending Patterns (Day vs. Time)"
-            xAxisLabel="Day of Week"
-            yAxisLabel="Time of Day"
-            xLabels={heatMapData.xLabels}
-            yLabels={heatMapData.yLabels}
-          />
-        ) : null;
+        // Heatmap is not implemented in the consolidated files yet
+        return null;
 
       case 'line':
       default:
         return lineData ? (
-          <GiftedTimeSeriesChart
+          <TimeSeriesChartComponent
             data={[lineData.datasets[0].data.map((y, i) => ({ x: lineData.labels[i], y }))]}
             title="Income vs. Expenses"
             yAxisLabel="Amount"

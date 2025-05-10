@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { VictoryLine, VictoryChart, VictoryTheme, VictoryAxis, VictoryPie, VictoryLabel } from '../utils/victoryUtils';
-import BarChartComponent from './charts/BarChartComponent';
-import AreaChartComponent from './charts/AreaChartComponent';
-import WebDonutChart from './charts/WebDonutChart';
-import WebTimeSeriesChart from './charts/WebTimeSeriesChart';
-import HeatMapComponent from './charts/HeatMapComponent';
-import ChartSelector from './charts/ChartSelector';
-import type { ChartType } from './charts/ChartSelector';
+import {
+  BarChartComponent,
+  DonutChartComponent,
+  TimeSeriesChartComponent,
+  AreaChartComponent,
+  ChartSelector,
+  ChartType
+} from './charts';
 import FilterControls, { FilterOptions } from './filters/FilterControls';
 import { filterTransactions, extractCategories, getDefaultFilters } from '../utils/filterUtils';
 
@@ -45,12 +45,11 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
   // Chart data states
-  const [barData, setBarData] = useState<any>(null);
-  const [pieData, setPieData] = useState<any>(null);
-  const [lineData, setLineData] = useState<any>(null);
-  const [areaData, setAreaData] = useState<any>(null);
-  const [timeSeriesData, setTimeSeriesData] = useState<any>(null);
-  const [heatMapData, setHeatMapData] = useState<any>(null);
+  const [barData, setBarData] = useState<Array<{x: string; y: number}>>([]);
+  const [pieData, setPieData] = useState<Array<{name: string; amount: number; color: string; legendFontColor: string; legendFontSize: number}>>([]);
+  const [lineData, setLineData] = useState<{labels: string[]; datasets: Array<{data: number[]}>}>({ labels: [], datasets: [{ data: [] }] });
+  const [areaData, setAreaData] = useState<Array<Array<{x: string; y: number}>>>([[]]);
+  const [timeSeriesData, setTimeSeriesData] = useState<Array<Array<{x: string; y: number}>>>([[]]);
 
   // Extract categories from transactions
   useEffect(() => {
@@ -139,11 +138,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     }));
     setPieData(pieChartData);
 
-    // Prepare donut chart data
-    const donutChartData = categorySummary.map(item => ({
-      x: item.category,
-      y: item.amount
-    }));
+    // Pie and donut charts use the same data in our consolidated version
 
     // Prepare area chart data (monthly expenses by category)
     // This is a simplified example - in a real app, you'd group by month
@@ -169,25 +164,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     ];
     setTimeSeriesData(timeSeriesData);
 
-    // Prepare heatmap data (day of week vs. time of day)
-    // This is a simplified example with random data
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const times = ["Morning", "Afternoon", "Evening", "Night"];
-
-    const heatmapData = [];
-    for (let i = 0; i < days.length; i++) {
-      for (let j = 0; j < times.length; j++) {
-        // Random spending amount between 10 and 100
-        const heat = Math.floor(Math.random() * 90) + 10;
-        heatmapData.push({ x: i, y: j, heat });
-      }
-    }
-
-    setHeatMapData({
-      data: heatmapData,
-      xLabels: days,
-      yLabels: times
-    });
+      // Heatmap is no longer used in the consolidated version
 
     // Update available charts based on data
     const charts: ChartType[] = ['line', 'bar'];
@@ -198,49 +175,7 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     setAvailableCharts(charts);
   }, [filteredData]);
 
-  // Chart configuration
-  const chartConfig = {
-    backgroundColor: colors.card,
-    backgroundGradientFrom: colors.card,
-    backgroundGradientTo: colors.card,
-    decimalPlaces: 2,
-    color: (opacity = 1) => {
-      // Convert hex to rgba
-      const hexToRgb = (hex) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16)
-        } : { r: 0, g: 0, b: 0 };
-      };
-
-      const rgb = hexToRgb(colors.primary);
-      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
-    },
-    labelColor: (opacity = 1) => {
-      const rgb = hexToRgb(colors.text);
-      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
-    },
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: "6",
-      strokeWidth: "2",
-      stroke: colors.primary,
-    },
-  };
-
-  // Helper function to convert hex to rgb
-  const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : { r: 0, g: 0, b: 0 };
-  };
+  // Our consolidated chart components handle their own styling based on the theme
 
   // Render the selected chart type
   const renderChart = () => {
@@ -256,27 +191,12 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
         ) : null;
 
       case 'pie':
-        return pieData && pieData.length > 0 ? (
-          <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
-            <VictoryPie
-              data={pieData.map(item => ({ x: item.name, y: item.amount }))}
-              width={width}
-              height={220}
-              colorScale={pieData.map(item => item.color)}
-              style={{ labels: { fill: colors.text, fontSize: 12 } }}
-              labelRadius={({ innerRadius }) => (innerRadius || 0) + 30}
-              innerRadius={30}
-              padAngle={2}
-            />
-          </View>
-        ) : null;
-
       case 'donut':
         return pieData && pieData.length > 0 ? (
-          <WebDonutChart
-            data={pieData.map(item => ({ x: item.name, y: item.amount }))}
+          <DonutChartComponent
+            data={pieData.map((item: {name: string; amount: number; color: string}) => ({ x: item.name, y: item.amount }))}
             title="Expense Categories"
-            colors={pieData.map(item => item.color)}
+            colors={pieData.map((item: {color: string}) => item.color)}
           />
         ) : null;
 
@@ -287,13 +207,13 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             title="Expense Trends by Category"
             yAxisLabel="Amount"
             xAxisLabel="Categories"
-            legendItems={pieData?.map(item => ({ name: item.name, color: item.color })) || []}
+            legendItems={pieData?.map((item: {name: string; color: string}) => ({ name: item.name, color: item.color })) || []}
           />
         ) : null;
 
       case 'timeSeries':
         return timeSeriesData ? (
-          <WebTimeSeriesChart
+          <TimeSeriesChartComponent
             data={timeSeriesData}
             title="Monthly Expense Trend"
             yAxisLabel="Amount"
@@ -303,47 +223,19 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
         ) : null;
 
       case 'heatmap':
-        return heatMapData ? (
-          <HeatMapComponent
-            data={heatMapData.data}
-            title="Spending Patterns (Day vs. Time)"
-            xAxisLabel="Day of Week"
-            yAxisLabel="Time of Day"
-            xLabels={heatMapData.xLabels}
-            yLabels={heatMapData.yLabels}
-          />
-        ) : null;
+        // Heatmap is not implemented in the consolidated files yet
+        return null;
 
       case 'line':
       default:
         return lineData ? (
-          <View style={[styles.chartContainer, dynamicStyles.chartContainer]}>
-            <VictoryChart
-              theme={VictoryTheme.material}
-              width={width}
-              height={220}
-            >
-              <VictoryAxis
-                style={{
-                  tickLabels: { fill: colors.text, fontSize: 12 }
-                }}
-                tickFormat={(t, i) => lineData.labels[i]}
-              />
-              <VictoryAxis
-                dependentAxis
-                style={{
-                  tickLabels: { fill: colors.text, fontSize: 12 }
-                }}
-              />
-              <VictoryLine
-                data={lineData.datasets[0].data.map((y, i) => ({ x: i, y }))}
-                style={{
-                  data: { stroke: colors.primary, strokeWidth: 3 },
-                }}
-                interpolation="natural"
-              />
-            </VictoryChart>
-          </View>
+          <TimeSeriesChartComponent
+            data={[lineData.datasets[0].data.map((y: number, i: number) => ({ x: lineData.labels[i], y }))]}
+            title="Income vs. Expenses"
+            yAxisLabel="Amount"
+            xAxisLabel="Category"
+            legendItems={[{ name: 'Overview', color: '#1e88e5' }]}
+          />
         ) : null;
     }
   };
