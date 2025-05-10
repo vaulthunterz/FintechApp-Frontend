@@ -5,10 +5,7 @@ module.exports = function(api) {
     plugins: [
       // Enable React Native web support
       'react-native-web',
-      
-      // Support for the Expo Router
-      'expo-router/babel',
-      
+
       // Add module resolver for cleaner imports
       [
         'module-resolver',
@@ -23,7 +20,7 @@ module.exports = function(api) {
           },
         },
       ],
-      
+
       // Add React Native reanimated support if needed
       'react-native-reanimated/plugin',
     ],

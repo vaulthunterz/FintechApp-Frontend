@@ -85,3 +85,21 @@ export interface ExpenseChartProps {
 export const DEFAULT_CHART_WIDTH = Dimensions.get('window').width - 40;
 export const DEFAULT_CHART_HEIGHT = 300;
 export const DEFAULT_COLORS = ['#1976D2', '#F44336', '#4CAF50', '#FF9800', '#9C27B0', '#795548'];
+
+// Default export for Expo Router
+const ChartTypesExport = {
+  ChartTypes: {
+    LINE: 'line',
+    BAR: 'bar',
+    PIE: 'pie',
+    DONUT: 'donut',
+    AREA: 'area',
+    TIME_SERIES: 'timeSeries',
+    HEATMAP: 'heatmap'
+  },
+  DEFAULT_CHART_WIDTH,
+  DEFAULT_CHART_HEIGHT,
+  DEFAULT_COLORS
+};
+
+export default ChartTypesExport;

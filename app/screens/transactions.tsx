@@ -22,7 +22,7 @@ import { auth } from "../config/firebaseConfig";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from "date-fns";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GiftedExpenseChart from "../components/charts/GiftedExpenseChart";
+import { ExpenseChart } from "../components/charts";
 
 // Define transaction interface
 interface Transaction {
@@ -401,7 +401,7 @@ const TransactionsScreen = () => {
       ) : filteredTransactions.length > 0 ? (
         <ScrollView style={{ flex: 1 }}>
           {/* Expense Chart */}
-          <GiftedExpenseChart
+          <ExpenseChart
             data={[
               { category: 'Food', amount: 250, color: '#FF6384' },
               { category: 'Transport', amount: 150, color: '#36A2EB' },
@@ -415,7 +415,7 @@ const TransactionsScreen = () => {
           />
 
           {/* Bar Chart */}
-          <GiftedExpenseChart
+          <ExpenseChart
             data={[
               { category: 'Jan', amount: 1200, color: '#FF6384' },
               { category: 'Feb', amount: 1900, color: '#36A2EB' },
@@ -518,10 +518,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
     elevation: 2,
   },
   transactionInfo: {

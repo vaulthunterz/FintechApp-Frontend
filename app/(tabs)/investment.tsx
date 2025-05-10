@@ -8,10 +8,7 @@ import QuestionnaireReminder from '../components/investment/QuestionnaireReminde
 import InvestmentSettingsDrawer from '../components/investment/InvestmentSettingsDrawer';
 import api from '../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import WebDonutChart from '../components/charts/WebDonutChart';
-import WebTimeSeriesChart from '../components/charts/WebTimeSeriesChart';
-import ChartSelector from '../components/charts/ChartSelector';
-import type { ChartType } from '../components/charts/ChartSelector';
+import { DonutChartComponent, TimeSeriesChartComponent, ChartSelector, ChartType } from '../components/charts';
 import FilterControls, { FilterOptions } from '../components/filters/FilterControls';
 import { getDefaultFilters } from '../utils/filterUtils';
 
@@ -236,7 +233,7 @@ const InvestmentScreen = () => {
           </View>
 
           {selectedChart === 'donut' ? (
-            <WebDonutChart
+            <DonutChartComponent
               data={assetAllocation.map(asset => ({
                 x: asset.type,
                 y: asset.value
@@ -246,7 +243,7 @@ const InvestmentScreen = () => {
               colors={colors.chartColors}
             />
           ) : (
-            <WebTimeSeriesChart
+            <TimeSeriesChartComponent
               data={performanceData}
               title="Portfolio Performance"
               yAxisLabel="Value"

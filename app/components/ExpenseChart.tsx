@@ -1,11 +1,5 @@
 import React from 'react';
-import GiftedExpenseChart from './charts/GiftedExpenseChart';
-
-interface ExpenseData {
-  category: string;
-  amount: number;
-  color: string;
-}
+import { ExpenseChart as PlatformExpenseChart, ExpenseData } from './charts';
 
 interface ExpenseChartProps {
   data: ExpenseData[];
@@ -15,9 +9,8 @@ interface ExpenseChartProps {
 }
 
 const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type, period }) => {
-
   return (
-    <GiftedExpenseChart
+    <PlatformExpenseChart
       data={data}
       title={title}
       type={type}
@@ -25,7 +18,5 @@ const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type, period }
     />
   );
 };
-
-
 
 export default ExpenseChart;

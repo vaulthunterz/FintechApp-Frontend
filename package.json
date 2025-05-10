@@ -46,6 +46,7 @@
     "react-native-toast-message": "^2.2.1",
     "react-native-web": "~0.19.6",
     "react-scripts": "5.0.1",
+    "victory": "^37.3.6",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

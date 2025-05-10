@@ -15,42 +15,43 @@ import {
   DEFAULT_COLORS
 } from './ChartTypes';
 
-// Import Victory components only for web platform
-let VictoryComponents: any = {
-  VictoryPie: () => null,
-  VictoryBar: () => null,
-  VictoryChart: () => null,
-  VictoryAxis: () => null,
-  VictoryLabel: () => null,
-  VictoryLegend: () => null,
-  VictoryLine: () => null,
-  VictoryArea: () => null,
-  VictoryScatter: () => null,
+// Define empty components as fallbacks
+const EmptyComponent = () => null;
+
+// Create a Victory components object
+const VictoryComponents = {
+  VictoryPie: EmptyComponent,
+  VictoryBar: EmptyComponent,
+  VictoryChart: EmptyComponent,
+  VictoryAxis: EmptyComponent,
+  VictoryLabel: EmptyComponent,
+  VictoryLegend: EmptyComponent,
+  VictoryLine: EmptyComponent,
+  VictoryArea: EmptyComponent,
+  VictoryScatter: EmptyComponent,
   VictoryTheme: { material: {} }
 };
 
-// Only import Victory on web platform
+// Use require for conditional imports
 if (Platform.OS === 'web') {
   try {
-    // Dynamic import for Victory (web version)
+    // Use require instead of import for conditional loading
     const Victory = require('victory');
-    VictoryComponents = {
-      VictoryPie: Victory.VictoryPie,
-      VictoryBar: Victory.VictoryBar,
-      VictoryChart: Victory.VictoryChart,
-      VictoryAxis: Victory.VictoryAxis,
-      VictoryLabel: Victory.VictoryLabel,
-      VictoryLegend: Victory.VictoryLegend,
-      VictoryLine: Victory.VictoryLine,
-      VictoryArea: Victory.VictoryArea,
-      VictoryScatter: Victory.VictoryScatter,
-      VictoryTheme: Victory.VictoryTheme
-    };
+
+    // Update components if available
+    if (Victory) {
+      Object.keys(VictoryComponents).forEach(key => {
+        if (Victory[key]) {
+          VictoryComponents[key] = Victory[key];
+        }
+      });
+    }
   } catch (error) {
     console.error('Failed to import Victory for web:', error);
   }
 }
 
+// Destructure components for use in the file
 const {
   VictoryPie,
   VictoryBar,
@@ -80,22 +81,22 @@ const WebUnsupportedPlaceholder: React.FC<{ title: string }> = ({ title }) => {
 // ==================== Web Bar Chart ====================
 export const WebBarChart: React.FC<BarChartProps> = (props) => {
   const { data, title, width = DEFAULT_CHART_WIDTH, height = DEFAULT_CHART_HEIGHT, yAxisLabel, colors = DEFAULT_COLORS } = props;
-  const { colors: themeColors, isDark } = useTheme();
-  
+  const { colors: themeColors } = useTheme();
+
   if (Platform.OS !== 'web') {
     return <WebUnsupportedPlaceholder title={title} />;
   }
-  
+
   const chartData = data.map((item, index) => ({
     x: item.x,
     y: item.y,
     fill: colors[index % colors.length]
   }));
-  
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.chartContainer}>
         <VictoryChart
           theme={VictoryTheme.material}
@@ -145,25 +146,25 @@ export const WebBarChart: React.FC<BarChartProps> = (props) => {
 // ==================== Web Donut Chart ====================
 export const WebDonutChart: React.FC<DonutChartProps> = (props) => {
   const { data, title, width = DEFAULT_CHART_WIDTH, height = DEFAULT_CHART_HEIGHT, colors = DEFAULT_COLORS } = props;
-  const { colors: themeColors, isDark } = useTheme();
-  
+  const { colors: themeColors } = useTheme();
+
   if (Platform.OS !== 'web') {
     return <WebUnsupportedPlaceholder title={title} />;
   }
-  
+
   const chartData = data.map((item, index) => ({
     x: item.x,
     y: item.y,
     fill: colors[index % colors.length]
   }));
-  
+
   // Calculate total
   const total = data.reduce((sum, item) => sum + item.y, 0);
-  
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.chartContainer}>
         <VictoryPie
           data={chartData}
@@ -183,7 +184,7 @@ export const WebDonutChart: React.FC<DonutChartProps> = (props) => {
           labels={({ datum }) => `${datum.x}: ${Math.round((datum.y / total) * 100)}%`}
         />
       </View>
-      
+
       <View style={styles.legend}>
         {data.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -210,12 +211,12 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     colors = DEFAULT_COLORS,
     legendItems = []
   } = props;
-  const { colors: themeColors, isDark } = useTheme();
-  
+  const { colors: themeColors } = useTheme();
+
   if (Platform.OS !== 'web') {
     return <WebUnsupportedPlaceholder title={title} />;
   }
-  
+
   // Use provided legend items or generate from data
   const chartLegendItems = legendItems.length > 0
     ? legendItems
@@ -223,11 +224,11 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
         name: `Series ${index + 1}`,
         color: colors[index % colors.length]
       }));
-  
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.legend}>
         {chartLegendItems.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -236,7 +237,7 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           </View>
         ))}
       </View>
-      
+
       <View style={styles.chartContainer}>
         <VictoryChart
           theme={VictoryTheme.material}
@@ -278,7 +279,7 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           ))}
         </VictoryChart>
       </View>
-      
+
       {xAxisLabel && (
         <Text style={[styles.axisLabel, { color: themeColors.textSecondary }]}>
           {xAxisLabel}
@@ -300,12 +301,12 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
     colors = DEFAULT_COLORS,
     legendItems = []
   } = props;
-  const { colors: themeColors, isDark } = useTheme();
-  
+  const { colors: themeColors } = useTheme();
+
   if (Platform.OS !== 'web') {
     return <WebUnsupportedPlaceholder title={title} />;
   }
-  
+
   // Use provided legend items or generate from data
   const chartLegendItems = legendItems.length > 0
     ? legendItems
@@ -313,11 +314,11 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
         name: `Series ${index + 1}`,
         color: colors[index % colors.length]
       }));
-  
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.legend}>
         {chartLegendItems.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -326,7 +327,7 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
           </View>
         ))}
       </View>
-      
+
       <View style={styles.chartContainer}>
         <VictoryChart
           theme={VictoryTheme.material}
@@ -362,7 +363,7 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
                 y: point.y
               }))}
               style={{
-                data: { 
+                data: {
                   fill: `${colors[index % colors.length]}80`, // Add transparency
                   stroke: colors[index % colors.length]
                 }
@@ -371,7 +372,7 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
           ))}
         </VictoryChart>
       </View>
-      
+
       {xAxisLabel && (
         <Text style={[styles.axisLabel, { color: themeColors.textSecondary }]}>
           {xAxisLabel}
@@ -384,11 +385,11 @@ export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
 // ==================== Web Expense Chart ====================
 export const WebExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type, period }) => {
   const { colors } = useTheme();
-  
+
   if (Platform.OS !== 'web') {
     return <WebUnsupportedPlaceholder title={title} />;
   }
-  
+
   // Format data for Victory charts
   const chartData = data.map((item) => ({
     x: item.category,
@@ -396,14 +397,14 @@ export const WebExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type
     color: item.color,
     label: `${item.category}: ${item.amount.toLocaleString()}`
   }));
-  
+
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       {period && (
         <Text style={[styles.period, { color: colors.textSecondary }]}>{period}</Text>
       )}
-      
+
       <View style={styles.chartContainer}>
         {type === 'pie' ? (
           <VictoryPie
@@ -462,7 +463,7 @@ export const WebExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type
           </VictoryChart>
         )}
       </View>
-      
+
       <View style={styles.legend}>
         {data.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -521,3 +522,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+// Default export for Expo Router
+const WebCharts = {
+  WebBarChart,
+  WebDonutChart,
+  WebTimeSeriesChart,
+  WebAreaChart,
+  WebExpenseChart
+};
+
+export default WebCharts;

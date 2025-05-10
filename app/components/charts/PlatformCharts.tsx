@@ -67,3 +67,15 @@ export const PlatformExpenseChart: React.FC<ExpenseChartProps> = (props) => {
 
 // Re-export the chart selector
 export { default as ChartSelector } from './ChartSelector';
+
+// Default export for Expo Router
+const PlatformCharts = {
+  BarChartComponent,
+  DonutChartComponent,
+  TimeSeriesChartComponent,
+  AreaChartComponent,
+  PlatformExpenseChart,
+  ChartSelector: require('./ChartSelector').default
+};
+
+export default PlatformCharts;

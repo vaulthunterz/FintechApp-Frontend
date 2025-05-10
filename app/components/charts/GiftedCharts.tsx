@@ -27,7 +27,7 @@ export const GiftedBarChart: React.FC<BarChartProps> = ({
   colors = DEFAULT_COLORS
 }) => {
   const { colors: themeColors } = useTheme();
-  
+
   // Format data for BarChart
   const barData = data.map((item, index) => ({
     value: item.y,
@@ -43,7 +43,7 @@ export const GiftedBarChart: React.FC<BarChartProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.chartContainer}>
         <BarChart
           data={barData}
@@ -64,14 +64,12 @@ export const GiftedBarChart: React.FC<BarChartProps> = ({
           yAxisLabelSuffix=""
           hideYAxisText={false}
           showFractionalValues={false}
-          showXAxisLabels={true}
-          showYAxisLabels={true}
           hideRules={false}
           rulesColor={themeColors.border + '40'}
           rulesType="solid"
         />
       </View>
-      
+
       {xAxisLabel && (
         <Text style={[styles.axisLabel, { color: themeColors.textSecondary }]}>
           {xAxisLabel}
@@ -86,11 +84,10 @@ export const GiftedDonutChart: React.FC<DonutChartProps> = ({
   data,
   title,
   width = DEFAULT_CHART_WIDTH,
-  height = DEFAULT_CHART_HEIGHT,
   colors = DEFAULT_COLORS
 }) => {
   const { colors: themeColors } = useTheme();
-  
+
   // Format data for PieChart
   const pieData = data.map((item, index) => ({
     value: item.y,
@@ -107,7 +104,7 @@ export const GiftedDonutChart: React.FC<DonutChartProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.chartContainer}>
         <PieChart
           data={pieData}
@@ -127,7 +124,7 @@ export const GiftedDonutChart: React.FC<DonutChartProps> = ({
           )}
         />
       </View>
-      
+
       <View style={styles.legend}>
         {data.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -154,10 +151,10 @@ export const GiftedTimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   legendItems = []
 }) => {
   const { colors: themeColors } = useTheme();
-  
+
   // Format data for LineChart
-  const formattedData = data.map((series, seriesIndex) => 
-    series.map((point, pointIndex) => ({
+  const formattedData = data.map((series) =>
+    series.map((point) => ({
       value: point.y,
       label: typeof point.x === 'string' ? point.x : point.x.toLocaleDateString(),
       dataPointText: point.y.toString(),
@@ -165,8 +162,8 @@ export const GiftedTimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   );
 
   // Use provided legend items or generate from data
-  const chartLegendItems = legendItems.length > 0 
-    ? legendItems 
+  const chartLegendItems = legendItems.length > 0
+    ? legendItems
     : data.map((_, index) => ({
         name: `Series ${index + 1}`,
         color: colors[index % colors.length]
@@ -175,7 +172,7 @@ export const GiftedTimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
       <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-      
+
       <View style={styles.legend}>
         {chartLegendItems.map((item, index) => (
           <View key={index} style={styles.legendItem}>
@@ -184,7 +181,7 @@ export const GiftedTimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           </View>
         ))}
       </View>
-      
+
       <View style={styles.chartContainer}>
         {formattedData.map((dataset, index) => (
           <LineChart
@@ -208,7 +205,7 @@ export const GiftedTimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           />
         ))}
       </View>
-      
+
       {xAxisLabel && (
         <Text style={[styles.axisLabel, { color: themeColors.textSecondary }]}>
           {xAxisLabel}
@@ -225,15 +222,15 @@ export const GiftedAreaChart: React.FC<AreaChartProps> = (props) => {
 };
 
 // ==================== Expense Chart ====================
-export const GiftedExpenseChart: React.FC<ExpenseChartProps> = ({ 
-  data, 
-  title, 
-  type, 
-  period 
+export const GiftedExpenseChart: React.FC<ExpenseChartProps> = ({
+  data,
+  title,
+  type,
+  period
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const width = DEFAULT_CHART_WIDTH;
-  
+
   // Calculate total amount
   const totalAmount = data.reduce((sum, item) => sum + item.amount, 0);
 
@@ -254,7 +251,7 @@ export const GiftedExpenseChart: React.FC<ExpenseChartProps> = ({
         {period && (
           <Text style={[styles.period, { color: colors.textSecondary }]}>{period}</Text>
         )}
-        
+
         <View style={styles.chartContainer}>
           <PieChart
             data={pieData}
@@ -274,7 +271,7 @@ export const GiftedExpenseChart: React.FC<ExpenseChartProps> = ({
             )}
           />
         </View>
-        
+
         <View style={styles.legend}>
           {data.map((item, index) => (
             <View key={index} style={styles.legendItem}>
@@ -306,7 +303,7 @@ export const GiftedExpenseChart: React.FC<ExpenseChartProps> = ({
         {period && (
           <Text style={[styles.period, { color: colors.textSecondary }]}>{period}</Text>
         )}
-        
+
         <View style={styles.chartContainer}>
           <BarChart
             data={barData}
@@ -388,3 +385,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+// Default export for Expo Router
+const GiftedCharts = {
+  GiftedBarChart,
+  GiftedDonutChart,
+  GiftedTimeSeriesChart,
+  GiftedAreaChart,
+  GiftedExpenseChart
+};
+
+export default GiftedCharts;
