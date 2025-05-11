@@ -7,7 +7,7 @@ import Toast from 'react-native-toast-message';
 export const getBaseUrl = () => {
   if (Platform.OS === 'web') {
     // For web, use localhost
-    return 'http://localhost:8080';
+    return 'https://fintrackke.com/api';
   } else if (Platform.OS === 'android') {
     // For Android devices, use ngrok URL
     return 'https://c34f-102-0-10-158.ngrok-free.app';
