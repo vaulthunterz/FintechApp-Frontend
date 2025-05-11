@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { getTokenWithRetry } from '../config/firebaseConfig';
 import Toast from 'react-native-toast-message';
 
-// Base URL for the API - this is different depending on platform
+// Base URL for the API - this is different depending on the platform
 export const getBaseUrl = () => {
   if (Platform.OS === 'web') {
     // For web, use localhost
