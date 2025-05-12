@@ -597,7 +597,8 @@ export const fetchUserGeneralProfile = async () => {
 
 export const updateUserGeneralProfile = async (profileData: any) => {
   try {
-    return apiRequest('put', '/api/auth/user/', profileData);
+    console.log('Updating user profile with data:', profileData);
+    return apiRequest('put', '/api/expenses/user/', profileData);
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;

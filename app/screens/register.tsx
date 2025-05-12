@@ -14,17 +14,22 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "react-native-toast-message";
+import api from "../services/api";
 
 const RegisterScreen = () => {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, loading, errors } = useAuth();
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
+    // Validate all required fields
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       Toast.show({
         type: "error",
         text1: "Error",
@@ -43,7 +48,35 @@ const RegisterScreen = () => {
     }
 
     try {
-      await register(email, password);
+      setIsSubmitting(true);
+
+      // 1. Register with Firebase
+      const userCredential = await register(email, password);
+
+      // 2. Update user profile in Firebase
+      if (userCredential && userCredential.user) {
+        try {
+          // 3. Update Django user with the same information
+          await api.updateUserGeneralProfile({
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            firebase_uid: userCredential.user.uid
+          });
+
+          Toast.show({
+            type: "success",
+            text1: "Registration Successful",
+            text2: "Your account has been created",
+          });
+
+          // Navigate to home screen
+          router.replace('/');
+        } catch (profileError) {
+          console.error("Error updating user profile:", profileError);
+          // Continue anyway since the Firebase account was created
+        }
+      }
     } catch (error: any) {
       console.error("Registration error:", error);
       Toast.show({
@@ -51,6 +84,8 @@ const RegisterScreen = () => {
         text1: "Registration Failed",
         text2: error.message || "Please try again later",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,6 +119,28 @@ const RegisterScreen = () => {
               <Text style={styles.errorMessage}>{errors.general}</Text>
             </View>
           )}
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+            />
+          </View>
 
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color={errors.email ? "#d32f2f" : "#666"} style={styles.inputIcon} />
@@ -146,9 +203,9 @@ const RegisterScreen = () => {
           <TouchableOpacity
             style={styles.registerButton}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={loading || isSubmitting}
           >
-            {loading ? (
+            {loading || isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.registerButtonText}>Register</Text>
@@ -272,4 +329,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RegisterScreen; 
+export default RegisterScreen;

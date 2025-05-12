@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import api from '../../services/api';
+import { auth } from '../../config/firebaseConfig';
 
 const UserProfileManagement: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -30,52 +31,58 @@ const UserProfileManagement: React.FC = () => {
     uid: ''
   });
 
-  // Fetch user data from the API
+  // Use Firebase user data directly from AuthContext
   useEffect(() => {
-    const fetchUserData = async () => {
+    const setUserDataFromFirebase = async () => {
       try {
         setLoading(true);
-        console.log('Fetching user profile data...');
+        console.log('Setting user data from Firebase...');
 
-        // Fetch user profile data from the API
-        const userProfileData = await api.fetchUserGeneralProfile();
-        console.log('User profile data:', userProfileData);
+        if (user) {
+          // Get metadata from Firebase auth if available
+          const firebaseUser = auth.currentUser;
+          const metadata = firebaseUser?.metadata;
 
-        if (userProfileData) {
-          // Get the current date for fallback
-          const now = new Date();
+          // Parse creation time and last sign-in time
+          const creationTime = metadata?.creationTime ? new Date(metadata.creationTime) : new Date();
+          const lastSignInTime = metadata?.lastSignInTime ? new Date(metadata.lastSignInTime) : new Date();
 
-          // Extract username from the response
-          const username = userProfileData.username || '';
+          // Use email from Firebase auth
+          const email = user.email || '';
+
+          // Use username derived from email (remove domain part)
+          const username = email ? email.split('@')[0] : '';
 
           setUserData({
-            displayName: userProfileData.first_name && userProfileData.last_name ?
-              `${userProfileData.first_name} ${userProfileData.last_name}` :
-              username,
-            email: userProfileData.email || '',
+            displayName: username, // No display name set during registration
+            email: email,
             username: username,
-            date_joined: userProfileData.date_joined ? new Date(userProfileData.date_joined) : now,
-            last_login: userProfileData.last_login ? new Date(userProfileData.last_login) : now,
-            uid: userProfileData.id || user?.uid || 'N/A'
+            date_joined: creationTime,
+            last_login: lastSignInTime,
+            uid: user.uid || 'N/A'
           });
 
-          console.log('User data set:', userData);
+          console.log('User data set from Firebase:', {
+            email,
+            username,
+            uid: user.uid,
+            creationTime,
+            lastSignInTime
+          });
+        } else {
+          console.log('No authenticated user found');
+          // Redirect to login if no user
+          router.replace('/screens/login');
         }
       } catch (error) {
-        console.error('Error fetching user profile data:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to load user profile data',
-          position: 'bottom'
-        });
+        console.error('Error setting user data from Firebase:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData();
-  }, []);
+    setUserDataFromFirebase();
+  }, [user]);
 
   // Create dynamic styles based on theme
   const dynamicStyles = {

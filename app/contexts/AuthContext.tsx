@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { router } from 'expo-router';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser
@@ -21,7 +21,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<any>; // Return UserCredential
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   errors: {
@@ -104,8 +104,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setErrors({}); // Clear any previous errors
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.replace('/');
+
+      // Create user with Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Don't navigate immediately - let the calling component handle navigation
+      // after any additional profile setup
+
+      return userCredential; // Return the user credential for further processing
     } catch (error: any) {
       console.error('Register error:', error);
       // Check specifically for email-already-in-use error
@@ -155,4 +161,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-export default AuthProvider; 
+export default AuthProvider;
