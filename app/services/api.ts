@@ -598,9 +598,26 @@ export const fetchUserGeneralProfile = async () => {
 export const updateUserGeneralProfile = async (profileData: any) => {
   try {
     console.log('Updating user profile with data:', profileData);
-    return apiRequest('put', '/api/expenses/user/', profileData);
+
+    // Log the token for debugging
+    const token = await getToken();
+    console.log('Auth token available:', !!token);
+    if (token) {
+      console.log('Token length:', token.length);
+      console.log('Token first 10 chars:', token.substring(0, 10));
+    }
+
+    // Use the correct endpoint that matches the backend URL configuration
+    console.log('Making API request to update user profile');
+    const response = await apiRequest('put', '/api/expenses/user/', profileData);
+    console.log('User profile update response:', response);
+    return response;
   } catch (error) {
     console.error('Error updating user profile:', error);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
     throw error;
   }
 };

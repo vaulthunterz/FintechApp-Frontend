@@ -56,6 +56,11 @@ const RegisterScreen = () => {
       // 2. Update user profile in Firebase
       if (userCredential && userCredential.user) {
         try {
+          console.log("User created successfully with UID:", userCredential.user.uid);
+
+          // Wait a moment to ensure Firebase auth is fully processed
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           // 3. Update Django user with the same information
           await api.updateUserGeneralProfile({
             first_name: firstName,
@@ -70,8 +75,10 @@ const RegisterScreen = () => {
             text2: "Your account has been created",
           });
 
-          // Navigate to home screen
-          router.replace('/');
+          // Navigate to home screen after a short delay to ensure everything is saved
+          setTimeout(() => {
+            router.replace('/');
+          }, 500);
         } catch (profileError) {
           console.error("Error updating user profile:", profileError);
           // Continue anyway since the Firebase account was created
