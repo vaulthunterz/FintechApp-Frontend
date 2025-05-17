@@ -54,10 +54,14 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "1.9.20"
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "kotlinVersion": "1.9.20",
+            "buildToolsVersion": "34.0.0"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
