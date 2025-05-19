@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth';
-import { getAnalytics, isSupported } from "firebase/analytics";
+import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
 import { Platform } from 'react-native';
 
 // Your web app's Firebase configuration
@@ -16,8 +16,22 @@ const firebaseConfig = {
   measurementId: "G-P582W6VTY7"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if it hasn't been initialized yet
+let app: FirebaseApp;
+try {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully');
+  } else {
+    app = getApp();
+    console.log('Firebase already initialized');
+  }
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  throw error;
+}
+
+// Initialize Auth with the app instance
 const auth = getAuth(app);
 
 // Set persistence based on platform
@@ -39,7 +53,7 @@ const initializePersistence = async () => {
 initializePersistence();
 
 // Initialize Analytics only if supported (web platform)
-let analytics = null;
+let analytics: Analytics | null = null;
 const initAnalytics = async () => {
   if (Platform.OS === 'web') {
     try {
@@ -108,11 +122,12 @@ const getTokenWithRetry = async (retries = 3): Promise<string> => {
 };
 
 // Export named exports
-export { auth, analytics, getTokenWithRetry };
+export { auth, analytics, getTokenWithRetry, app };
 
 // Add a default export to satisfy Expo Router
 export default {
   auth,
   analytics,
-  getTokenWithRetry
+  getTokenWithRetry,
+  app
 };

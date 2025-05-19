@@ -28,30 +28,50 @@ interface UserProfileData {
   financial_knowledge: string;
   monthly_savings: number;
   emergency_fund: boolean;
+  [key: string]: string | number | boolean | string[]; // Add index signature
 }
 
 interface Recommendation {
   id: string;
   name: string;
-  risk_level: number;
-  expected_return: number;
+  type: string;
+  risk_level: number | string;
+  expected_return: number | string;
   minimum_investment: number;
-  fund_manager: string;
+  fund_manager?: string;
+  time_horizon?: string;
   description?: string;
+  returns?: string;
+  allocation?: Record<string, any>;
+  fund_id?: string;
+  asset_class?: string;
+  gemini_analysis?: string;
 }
 
 const InvestmentRecommendationsScreen = () => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
-  const [loading, setLoading] = useState(false); // State for recommendations
+  const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [refreshing, setRefreshing] = useState(false); // State for refresh action
+  const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // Show 5 recommendations per page
+  const [itemsPerPage] = useState(5);
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
-  const [selectedFundDetails, setSelectedFundDetails] = useState<any>(null); // Add this line
-  const [fundDetailsLoading, setFundDetailsLoading] = useState(false); // Add this line
+  const [selectedFundDetails, setSelectedFundDetails] = useState<any>(null);
+  const [fundDetailsLoading, setFundDetailsLoading] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Recommendation | null>(null);
+  const [geminiAnalysisLoading, setGeminiAnalysisLoading] = useState(false);
+  const [investmentAmount, setInvestmentAmount] = useState<string>('1000');
+  const [investmentYears, setInvestmentYears] = useState<string>('5');
+  const [currentFundId, setCurrentFundId] = useState<string>('');
+  const [fundDetails, setFundDetails] = useState<any>(null);
+  const [searchResponse, setSearchResponse] = useState<any>(null);
+  const params = useLocalSearchParams();
+  const riskLevel = params.riskLevel as string || 'medium';
+  const amount = params.amount ? Number(params.amount) : 1000;
+
+  console.log('Received params for recommendations:', { riskLevel, amount });
 
   // Calculate paginated recommendations
   const paginatedRecommendations = useMemo(() => {
@@ -67,16 +87,6 @@ const InvestmentRecommendationsScreen = () => {
     console.log('Current page:', currentPage);
     console.log('Paginated recommendations:', paginatedRecommendations);
   }, [recommendations, currentPage, itemsPerPage, paginatedRecommendations]);
-
-  const [selectedRecommendation, setSelectedRecommendation] = useState<Recommendation | null>(null);
-  const [geminiAnalysisLoading, setGeminiAnalysisLoading] = useState(false);
-  const [investmentAmount, setInvestmentAmount] = useState<string>('1000');
-  const [investmentYears, setInvestmentYears] = useState<string>('5');
-  const params = useLocalSearchParams();
-  const riskLevel = params.riskLevel as string || 'medium';
-  const amount = params.amount ? Number(params.amount) : 1000;
-
-  console.log('Received params for recommendations:', { riskLevel, amount });
 
   useEffect(() => {
     fetchRecommendations(currentPage);
@@ -210,12 +220,15 @@ const InvestmentRecommendationsScreen = () => {
                 id: `fund-${index}`,
                 name: rec.fund_name,
                 type: 'Money Market Fund',
-                risk_level: rec.fund_info.risk_level <= 3 ? 'low' : (rec.fund_info.risk_level <= 7 ? 'medium' : 'high'),
-                expected_return: rec.fund_info.returns,
+                risk_level: rec.fund_info.risk_level,  // Keep as number
+                expected_return: parseFloat(rec.fund_info.returns), // Convert to number
+                minimum_investment: rec.fund_info.min_investment,
+                fund_manager: rec.fund_info.fund_manager || 'Unknown',
                 time_horizon: rec.fund_info.risk_level <= 3 ? '1-3 years' : (rec.fund_info.risk_level <= 7 ? '3-7 years' : '7+ years'),
                 description: rec.fund_info.description,
-                min_investment: rec.fund_info.min_investment,
                 returns: rec.fund_info.returns,
+                fund_id: rec.fund_info.fund_id,
+                asset_class: rec.fund_info.asset_class
               };
             } else {
               // Generic recommendation format
@@ -223,11 +236,12 @@ const InvestmentRecommendationsScreen = () => {
                 id: rec.id || `rec-${index}`,
                 name: rec.name || rec.fund_name || `Investment Option ${index + 1}`,
                 type: rec.type || 'Investment Fund',
-                risk_level: rec.risk_level || 'medium',
-                expected_return: rec.expected_return || rec.returns || '7-9%',
+                risk_level: typeof rec.risk_level === 'string' ? parseFloat(rec.risk_level) : rec.risk_level || 2,
+                expected_return: typeof rec.expected_return === 'string' ? parseFloat(rec.expected_return) : rec.expected_return || 8,
+                minimum_investment: rec.minimum_investment || rec.min_investment || 1000,
+                fund_manager: rec.fund_manager || 'Unknown',
                 time_horizon: rec.time_horizon || '3-5 years',
-                description: rec.description || 'No description available',
-                min_investment: rec.min_investment || 1000,
+                description: rec.description || 'No description available'
               };
             }
           });
@@ -248,63 +262,36 @@ const InvestmentRecommendationsScreen = () => {
             {
               id: 'fallback-1',
               name: 'Balanced Portfolio',
-              type: 'Mixed Allocation',
-              risk_level: 'Medium',
-              expected_return: '7-9%',
-              time_horizon: '5-7 years',
-              description: 'A balanced portfolio with a mix of stocks and bonds, suitable for medium risk tolerance.',
-              min_investment: 1000,
-              returns: '7-9%',
-              allocation: {}, // Add allocation property to fix type error
+              type: 'Mixed Fund',
+              risk_level: 2,
+              expected_return: 8,
+              minimum_investment: 1000,
+              fund_manager: 'Default Manager',
+              time_horizon: '3-5 years',
+              description: 'A balanced portfolio with moderate risk and returns'
             },
             {
               id: 'fallback-2',
-              name: 'Bond Index Fund',
-              type: 'Fixed Income',
-              risk_level: 'Medium-Low',
-              expected_return: '5-7%',
-              time_horizon: '3-5 years',
-              description: 'A fund that tracks a bond index, offering moderate returns with lower risk.',
-              min_investment: 2000,
-              returns: '5-7%',
-              allocation: {}, // Add allocation property to fix type error
+              name: 'Conservative Fund',
+              type: 'Bond Fund',
+              risk_level: 1,
+              expected_return: 5,
+              minimum_investment: 500,
+              fund_manager: 'Default Manager',
+              time_horizon: '1-3 years',
+              description: 'A conservative fund focused on capital preservation'
             },
             {
               id: 'fallback-3',
-              name: 'S&P 500 Index Fund',
-              type: 'Equity',
-              risk_level: 'Medium',
-              expected_return: '8-10%',
-              time_horizon: '5-10 years',
-              description: 'A fund that tracks the S&P 500 index, offering exposure to large US companies.',
-              min_investment: 3000,
-              returns: '8-10%',
-              allocation: {}, // Add allocation property to fix type error
-            },
-            {
-              id: 'fallback-4',
-              name: 'Growth Stock Fund',
-              type: 'Equity',
-              risk_level: 'Medium-High',
-              expected_return: '10-12%',
-              time_horizon: '7-10 years',
-              description: 'A fund focusing on growth stocks with potential for higher returns.',
-              min_investment: 5000,
-              returns: '10-12%',
-              allocation: {}, // Add allocation property to fix type error
-            },
-            {
-              id: 'fallback-5',
-              name: 'Aggressive Growth Fund',
-              type: 'Equity',
-              risk_level: 'High',
-              expected_return: '12-15%',
-              time_horizon: '10+ years',
-              description: 'A high-risk fund targeting maximum growth through aggressive investments.',
-              min_investment: 10000,
-              returns: '12-15%',
-              allocation: {}, // Add allocation property to fix type error
-            },
+              name: 'Growth Fund',
+              type: 'Equity Fund',
+              risk_level: 3,
+              expected_return: 12,
+              minimum_investment: 2000,
+              fund_manager: 'Default Manager',
+              time_horizon: '5+ years',
+              description: 'An aggressive fund targeting high growth'
+            }
           ];
 
           setRecommendations(fallbackRecommendations);
@@ -330,63 +317,36 @@ const InvestmentRecommendationsScreen = () => {
         {
           id: 'fallback-1',
           name: 'Balanced Portfolio',
-          type: 'Mixed Allocation',
-          risk_level: 'Medium',
-          expected_return: '7-9%',
-          time_horizon: '5-7 years',
-          description: 'A balanced portfolio with a mix of stocks and bonds, suitable for medium risk tolerance.',
-          min_investment: 1000,
-          returns: '7-9%',
-          allocation: {}, // Add allocation property to fix type error
+          type: 'Mixed Fund',
+          risk_level: 2,
+          expected_return: 8,
+          minimum_investment: 1000,
+          fund_manager: 'Default Manager',
+          time_horizon: '3-5 years',
+          description: 'A balanced portfolio with moderate risk and returns'
         },
         {
           id: 'fallback-2',
-          name: 'Bond Index Fund',
-          type: 'Fixed Income',
-          risk_level: 'Medium-Low',
-          expected_return: '5-7%',
-          time_horizon: '3-5 years',
-          description: 'A fund that tracks a bond index, offering moderate returns with lower risk.',
-          min_investment: 2000,
-          returns: '5-7%',
-          allocation: {}, // Add allocation property to fix type error
+          name: 'Conservative Fund',
+          type: 'Bond Fund',
+          risk_level: 1,
+          expected_return: 5,
+          minimum_investment: 500,
+          fund_manager: 'Default Manager',
+          time_horizon: '1-3 years',
+          description: 'A conservative fund focused on capital preservation'
         },
         {
           id: 'fallback-3',
-          name: 'S&P 500 Index Fund',
-          type: 'Equity',
-          risk_level: 'Medium',
-          expected_return: '8-10%',
-          time_horizon: '5-10 years',
-          description: 'A fund that tracks the S&P 500 index, offering exposure to large US companies.',
-          min_investment: 3000,
-          returns: '8-10%',
-          allocation: {}, // Add allocation property to fix type error
-        },
-        {
-          id: 'fallback-4',
-          name: 'Growth Stock Fund',
-          type: 'Equity',
-          risk_level: 'Medium-High',
-          expected_return: '10-12%',
-          time_horizon: '7-10 years',
-          description: 'A fund focusing on growth stocks with potential for higher returns.',
-          min_investment: 5000,
-          returns: '10-12%',
-          allocation: {}, // Add allocation property to fix type error
-        },
-        {
-          id: 'fallback-5',
-          name: 'Aggressive Growth Fund',
-          type: 'Equity',
-          risk_level: 'High',
-          expected_return: '12-15%',
-          time_horizon: '10+ years',
-          description: 'A high-risk fund targeting maximum growth through aggressive investments.',
-          min_investment: 10000,
-          returns: '12-15%',
-          allocation: {}, // Add allocation property to fix type error
-        },
+          name: 'Growth Fund',
+          type: 'Equity Fund',
+          risk_level: 3,
+          expected_return: 12,
+          minimum_investment: 2000,
+          fund_manager: 'Default Manager',
+          time_horizon: '5+ years',
+          description: 'An aggressive fund targeting high growth'
+        }
       ]);
     } finally {
       setLoading(false);
@@ -461,53 +421,41 @@ const InvestmentRecommendationsScreen = () => {
   };
 
   const fetchAndShowFundDetails = async (recommendation: Recommendation) => {
-    if (!recommendation) return;
-    
-    setFundDetailsLoading(true);
-    setSelectedRecommendation(recommendation);
-    setSelectedFundDetails(null);
-    
     try {
-      // Extract fund ID - either from the ID field directly or from the recommendation ID
-      const fundId = recommendation.fund_id || recommendation.id;
-      console.log('Fetching details for fund ID:', fundId);
+      setFundDetailsLoading(true);
+      setCurrentFundId(recommendation.fund_id || '');
       
-      const fundDetails = await api.getMarketFundDetails(fundId);
-      console.log('Received fund details:', fundDetails);
+      let details = null;
       
-      if (!fundDetails) {
-        throw new Error('Could not fetch fund details');
-          fundId = searchResponse.data.results[0].id;
+      // First try to get details directly if we have a fund ID
+      if (recommendation.fund_id) {
+        const response = await api.getMarketFundDetails(recommendation.fund_id);
+        details = response.data;
+      }
+      
+      // If no direct details, try searching
+      if (!details) {
+        const searchResult = await api.searchMarketFunds(recommendation.name);
+        if (searchResult.data?.results?.length > 0) {
+          const fundId = searchResult.data.results[0].id;
+          const response = await api.getMarketFundDetails(fundId);
+          details = response.data;
         }
       }
 
-      // If we have a fund ID, get the details
-      if (fundId) {
-        console.log('Fetching fund details for ID:', fundId);
-        const response = await api.getMarketFundDetails(fundId);
-        fundDetails = response.data;
+      if (!details) {
+        throw new Error('Could not fetch fund details');
       }
 
-      if (!fundDetails) {
-        throw new Error('Could not find fund details');
-      }
-
-      console.log('Fund details loaded:', fundDetails);
-      setSelectedFundDetails(fundDetails);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Fund details loaded successfully'
-      });
+      setSelectedFundDetails(details);
+      setSelectedRecommendation(recommendation);
     } catch (error) {
       console.error('Error fetching fund details:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch fund details';
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: errorMessage
+        text2: 'Could not fetch fund details'
       });
-      setSelectedFundDetails(null);
     } finally {
       setFundDetailsLoading(false);
     }
@@ -566,7 +514,9 @@ const InvestmentRecommendationsScreen = () => {
     if (recommendation.expected_return) {
       const returnString = recommendation.expected_return;
       // Parse strings like '7-9%' or '10%'
-      const matches = returnString.match(/(\d+)(?:-(\d+))?%/);
+      const matches = typeof returnString === 'string' 
+        ? returnString.match(/(\d+)(?:-(\d+))?%/)
+        : String(returnString).match(/(\d+)(?:-(\d+))?%/);
 
       if (matches) {
         if (matches[2]) {
@@ -621,7 +571,9 @@ const InvestmentRecommendationsScreen = () => {
                 name: recommendation.name,
                 type: recommendation.type,
                 risk_level: recommendation.risk_level,
-                expected_return: recommendation.expected_return.replace(/%/g, '').split('-')[0], // Extract numeric value
+                expected_return: typeof recommendation.expected_return === 'string'
+                  ? recommendation.expected_return.replace(/%/g, '').split('-')[0]
+                  : String(recommendation.expected_return), // Convert number to string
                 amount: amount || 1000, // Use the amount from params or default
                 description: recommendation.description,
                 asset_class: recommendation.asset_class || recommendation.type,
@@ -687,7 +639,71 @@ const InvestmentRecommendationsScreen = () => {
     },
   };
 
-  // Calculate investment returns for the selected recommendation - moved to a single declaration
+  // Helper function to convert risk level to string
+  const getRiskLevelString = (level: number | string): string => {
+    const numLevel = typeof level === 'string' ? parseFloat(level) : level;
+    if (numLevel <= 3) return 'Low';
+    if (numLevel <= 7) return 'Medium';
+    return 'High';
+  };
+
+  // Helper function to format expected return
+  const formatExpectedReturn = (returnValue: number | string): string => {
+    const numReturn = typeof returnValue === 'string' ? parseFloat(returnValue) : returnValue;
+    return `${numReturn}%`;
+  };
+
+  // Update the risk level check in the component
+  const isHighRisk = (recommendation: Recommendation): boolean => {
+    const riskLevel = typeof recommendation.risk_level === 'string' 
+      ? parseFloat(recommendation.risk_level) 
+      : recommendation.risk_level;
+    return riskLevel > 7;
+  };
+
+  // Update the expected return formatting
+  const getFormattedReturn = (recommendation: Recommendation): string => {
+    if (typeof recommendation.expected_return === 'string') {
+      return recommendation.expected_return.includes('%') 
+        ? recommendation.expected_return 
+        : `${recommendation.expected_return}%`;
+    }
+    return `${recommendation.expected_return}%`;
+  };
+
+  // Helper function to safely check if a value matches a pattern
+  const matchesPattern = (value: string | number, pattern: string): boolean => {
+    if (typeof value === 'string') {
+      return value.match(pattern) !== null;
+    }
+    return String(value).match(pattern) !== null;
+  };
+
+  // Helper function to safely replace text
+  const replaceText = (value: string | number, searchValue: string | RegExp, replaceValue: string): string => {
+    if (typeof value === 'string') {
+      return value.replace(searchValue, replaceValue);
+    }
+    return String(value).replace(searchValue, replaceValue);
+  };
+
+  // Update the risk level check
+  const getRiskLevelValue = (recommendation: Recommendation): number => {
+    const value = recommendation.risk_level;
+    if (typeof value === 'string') {
+      return parseFloat(value.replace(/[^\d.]/g, '')) || 0;
+    }
+    return value;
+  };
+
+  // Update the expected return calculation
+  const getExpectedReturnValue = (recommendation: Recommendation): number => {
+    const value = recommendation.expected_return;
+    if (typeof value === 'string') {
+      return parseFloat(value.replace(/[^\d.]/g, '')) || 0;
+    }
+    return value;
+  };
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
@@ -832,7 +848,7 @@ const InvestmentRecommendationsScreen = () => {
                       <Text style={[styles.recommendationTitle, dynamicStyles.title]}>{recommendation.name}</Text>
                       <Text style={[styles.recommendationType, dynamicStyles.subtitle]}>{recommendation.type}</Text>
                       <Text style={[styles.recommendationReturn, dynamicStyles.subtitle]}>
-                        Expected Return: {recommendation.expected_return}
+                        Expected Return: {getFormattedReturn(recommendation)}
                       </Text>
                     </View>
                     <View style={styles.recommendationActions}>
@@ -860,12 +876,6 @@ const InvestmentRecommendationsScreen = () => {
       <Toast />
     </View>
   );
-};
-
-// Helper function to get risk level text
-const getRiskLevelText = (riskTolerance: number): string => {
-  if (riskTolerance <= 8) return '#FF9800'; // Orange
-  return '#F44336'; // Red
 };
 
 const styles = StyleSheet.create({

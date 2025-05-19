@@ -8,8 +8,10 @@ import {
   onAuthStateChanged,
 } from '@firebase/auth';
 import { showSuccessToast, showErrorToast } from '../utils/toastUtils';
+import { app } from '../config/firebaseConfig';
 
-const auth = getAuth();
+// Initialize auth with the Firebase app instance
+const auth = getAuth(app);
 
 interface User {
   uid: string;

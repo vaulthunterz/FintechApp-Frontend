@@ -9,6 +9,9 @@ import Toast, { BaseToast, ErrorToast, ToastConfig as ToastConfigType } from 're
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { toastConfig } from './config/toastConfig';
 
+// Import Firebase configuration
+import { app } from './config/firebaseConfig';
+
 import AuthProvider from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import BottomNavBar from './components/BottomNavBar';
@@ -22,14 +25,22 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const [isFirebaseInitialized, setIsFirebaseInitialized] = useState(false);
 
   useEffect(() => {
-    if (loaded) {
+    // Check if Firebase is initialized
+    if (app) {
+      setIsFirebaseInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loaded && isFirebaseInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, isFirebaseInitialized]);
 
-  if (!loaded) {
+  if (!loaded || !isFirebaseInitialized) {
     return null;
   }
 
