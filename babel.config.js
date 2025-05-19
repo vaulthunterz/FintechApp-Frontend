@@ -20,9 +20,6 @@ module.exports = function(api) {
           },
         },
       ],
-
-      // Add React Native reanimated support if needed
-      'react-native-reanimated/plugin',
     ],
   };
 };
