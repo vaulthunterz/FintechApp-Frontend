@@ -1,30 +1,33 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { router } from 'expo-router';
+import { getAuth, User as FirebaseUser } from '@firebase/auth';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+} from '@firebase/auth';
 import { showSuccessToast, showErrorToast } from '../utils/toastUtils';
 
+const auth = getAuth();
+
 interface User {
-  uid: string;  // Firebase UID
-  djangoId?: string;  // Django user ID
+  uid: string;
+  djangoId?: string;
   email: string | null;
   username?: string;
   date_joined?: string;
+  lastTokenRefresh?: number;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<any>; // Return UserCredential
+  register: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  getValidToken: () => Promise<string>;
   errors: {
     general?: string;
     email?: string;
@@ -32,6 +35,8 @@ interface AuthContextType {
     confirmPassword?: string;
   };
 }
+
+const TOKEN_REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes in milliseconds
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -53,29 +58,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [errors, setErrors] = useState<AuthContextType['errors']>({});
 
   useEffect(() => {
-    // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
-          // Get the Django user ID from the token
           const token = await firebaseUser.getIdToken();
           const decodedToken = JSON.parse(atob(token.split('.')[1]));
-          const djangoId = decodedToken.django_id; // This will be added by your backend
+          const djangoId = decodedToken.django_id;
 
           setUser({
             uid: firebaseUser.uid,
             djangoId: djangoId,
             email: firebaseUser.email,
             username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            date_joined: new Date().toISOString() // Placeholder, should come from backend
+            date_joined: new Date().toISOString(),
+            lastTokenRefresh: Date.now()
           });
         } catch (error) {
           console.error('Error getting Django user ID:', error);
-          // Fallback to just Firebase UID
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            lastTokenRefresh: Date.now()
           });
         }
       } else {
@@ -84,9 +88,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     });
 
-    // Cleanup subscription
     return () => unsubscribe();
   }, []);
+
+  // Setup periodic token refresh
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshTimer = setInterval(async () => {
+      await refreshUser();
+    }, TOKEN_REFRESH_INTERVAL);
+
+    return () => clearInterval(refreshTimer);
+  }, [user]);
+
+  const getValidToken = async (): Promise<string> => {
+    if (!auth.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    const now = Date.now();
+    const lastRefresh = user?.lastTokenRefresh || 0;
+
+    // Force token refresh if it's been more than 55 minutes
+    if (now - lastRefresh > TOKEN_REFRESH_INTERVAL) {
+      await refreshUser();
+    }
+
+    return auth.currentUser.getIdToken();
+  };
+
+  const refreshUser = async () => {
+    try {
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken(true);
+        setUser(prev => prev ? {
+          ...prev,
+          lastTokenRefresh: Date.now()
+        } : null);
+        console.log('Token refreshed successfully');
+      }
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      // If token refresh fails, we should log out the user
+      await logout();
+      throw error;
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -94,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await signInWithEmailAndPassword(auth, email, password);
       showSuccessToast('Login Successful', 'Welcome back!');
       router.replace('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     } finally {
@@ -105,18 +153,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (email: string, password: string) => {
     try {
       setLoading(true);
-      setErrors({}); // Clear any previous errors
+      setErrors({});
 
-      // Create user with Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Don't navigate immediately - let the calling component handle navigation
-      // after any additional profile setup
-
-      return userCredential; // Return the user credential for further processing
+      return userCredential;
     } catch (error: any) {
       console.error('Register error:', error);
-      // Check specifically for email-already-in-use error
       if (error.code === 'auth/email-already-in-use') {
         setErrors({
           email: 'This email is already registered',
@@ -145,21 +187,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshUser = async () => {
-    try {
-      if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken(true);
-        // Normally you would refresh user data from your backend here
-        console.log('Token refreshed');
-      }
-    } catch (error) {
-      console.error('Error refreshing user:', error);
-      throw error;
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, errors }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      refreshUser,
+      getValidToken,
+      errors
+    }}>
       {children}
     </AuthContext.Provider>
   );

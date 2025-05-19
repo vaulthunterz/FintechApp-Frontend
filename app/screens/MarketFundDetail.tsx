@@ -44,11 +44,14 @@ const MarketFundDetail = () => {
     const fetchFundDetails = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/investment/market-funds/${id}/`);
+        const response = await api.getMarketFundDetails(id as string);
+        if (!response.data) {
+          throw new Error('No fund details returned from the server');
+        }
         setFund(response.data);
       } catch (err) {
         console.error('Error fetching fund details:', err);
-        setError('Failed to load fund details. Please try again.');
+        setError(err instanceof Error ? err.message : 'Failed to load fund details. Please try again.');
       } finally {
         setLoading(false);
       }

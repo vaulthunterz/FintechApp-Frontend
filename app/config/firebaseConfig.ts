@@ -57,7 +57,7 @@ const initAnalytics = async () => {
 initAnalytics();
 
 // Add a function to handle token refresh with clock skew tolerance
-const getTokenWithRetry = async (retries = 3) => {
+const getTokenWithRetry = async (retries = 3): Promise<string> => {
   console.log("getTokenWithRetry called, current user:", !!auth.currentUser);
   
   const currentUser = auth.currentUser;
@@ -66,7 +66,6 @@ const getTokenWithRetry = async (retries = 3) => {
     throw new Error('No user is currently signed in');
   }
   
-  // Setup proper error handling with exponential backoff
   let lastError = null;
   let delayMs = 1000;
   
@@ -105,7 +104,6 @@ const getTokenWithRetry = async (retries = 3) => {
     }
   }
   
-  // All retries failed
   throw lastError || new Error('Failed to get token after multiple attempts');
 };
 
@@ -117,4 +115,4 @@ export default {
   auth,
   analytics,
   getTokenWithRetry
-}; 
+};

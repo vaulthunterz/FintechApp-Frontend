@@ -468,15 +468,15 @@ const InvestmentRecommendationsScreen = () => {
     setSelectedFundDetails(null);
     
     try {
-      let fundId = recommendation.id;
-      let fundDetails;
+      // Extract fund ID - either from the ID field directly or from the recommendation ID
+      const fundId = recommendation.fund_id || recommendation.id;
+      console.log('Fetching details for fund ID:', fundId);
       
-      // If no direct fund ID, try to find by name
-      if (!fundId && recommendation.name) {
-        console.log('Searching for fund by name:', recommendation.name);
-        const searchResponse = await api.searchMarketFunds(recommendation.name);
-        
-        if (searchResponse?.data?.results?.length > 0) {
+      const fundDetails = await api.getMarketFundDetails(fundId);
+      console.log('Received fund details:', fundDetails);
+      
+      if (!fundDetails) {
+        throw new Error('Could not fetch fund details');
           fundId = searchResponse.data.results[0].id;
         }
       }

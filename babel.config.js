@@ -1,10 +1,12 @@
 module.exports = function(api) {
-  api.cache(true);
-  return {
+  api.cache(true);  return {
     presets: ['babel-preset-expo'],
     plugins: [
+      // Enable reanimated plugin FIRST
+      'react-native-reanimated/plugin',
+      
       // Enable React Native web support
-      'react-native-web',
+      'react-native-web', 
 
       // Add module resolver for cleaner imports
       [
@@ -19,7 +21,7 @@ module.exports = function(api) {
             '@utils': './app/utils',
           },
         },
-      ],
+      ]
     ],
   };
 };

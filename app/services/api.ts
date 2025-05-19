@@ -1,8 +1,8 @@
 // API service for the app
 // This is a mock implementation that will be replaced with actual API calls
 
-import axios from 'axios';
-import { auth } from '../config/firebaseConfig';
+import { auth, getTokenWithRetry } from '../config/firebaseConfig';
+import axios, { AxiosRequestConfig } from 'axios';
 import Toast from 'react-native-toast-message';
 import { Platform } from 'react-native';
 
@@ -11,7 +11,7 @@ import { API_BASE_URL, getToken } from './apiUtils';
 
 // Market Fund interfaces and API functions
 export interface MarketFund {
-  id: number | string;
+  id: string;
   name: string;
   fund_type: string;
   fund_type_display: string;
@@ -40,7 +40,7 @@ const getAIService = () => {
 };
 
 // Function to make API requests with authentication
-const apiRequest = async (method: string, endpoint: string, data: any = null) => {
+const apiRequest = async (method: string, endpoint: string, data: any = null, retryCount = 0) => {
   console.log(`API Request: ${method.toUpperCase()} ${endpoint}`);
 
   let token = null;
@@ -985,11 +985,11 @@ export const fetchMarketFunds = async (params?: {
         .join('&')
     : '';
   
-  return apiRequest('get', `/api/v2/market-funds/${queryString ? `?${queryString}` : ''}`);
+  return apiRequest('get', `/api/investment/market-funds/${queryString ? `?${queryString}` : ''}`);
 };
 
 export const getMarketFundDetails = async (fundId: string) => {
-  return apiRequest('get', `/api/v2/market-funds/${fundId}/`);
+  return apiRequest('get', `/api/investment/market-funds/${fundId}/`);
 };
 
 export const searchMarketFunds = async (query: string) => {
