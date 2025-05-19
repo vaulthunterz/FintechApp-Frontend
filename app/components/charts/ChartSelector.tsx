@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
-export type ChartType = 'line' | 'bar' | 'pie' | 'donut' | 'area' | 'timeSeries' | 'heatmap';
+export type ChartType = 'line' | 'bar' | 'pie' | 'donut' | 'timeSeries';
 
 interface ChartSelectorProps {
   selectedChart: ChartType;
@@ -19,9 +19,8 @@ interface ChartOption {
 const ChartSelector: React.FC<ChartSelectorProps> = ({
   selectedChart,
   onSelectChart,
-  availableCharts = ['line', 'bar', 'pie', 'donut', 'area', 'timeSeries', 'heatmap']
-}) => {
-  const chartOptions: ChartOption[] = [
+  availableCharts = ['line', 'bar', 'pie', 'donut', 'timeSeries']
+}) => {    const chartOptions: ChartOption[] = [
     {
       type: 'line',
       label: 'Line',
@@ -43,19 +42,9 @@ const ChartSelector: React.FC<ChartSelectorProps> = ({
       icon: <MaterialCommunityIcons name="chart-donut" size={20} color="#ff9800" />
     },
     {
-      type: 'area',
-      label: 'Area',
-      icon: <MaterialCommunityIcons name="chart-areaspline" size={20} color="#9c27b0" />
-    },
-    {
       type: 'timeSeries',
       label: 'Time',
       icon: <MaterialCommunityIcons name="chart-timeline-variant" size={20} color="#795548" />
-    },
-    {
-      type: 'heatmap',
-      label: 'Heat',
-      icon: <MaterialCommunityIcons name="grid" size={20} color="#607d8b" />
     }
   ].filter(option => availableCharts.includes(option.type));
 

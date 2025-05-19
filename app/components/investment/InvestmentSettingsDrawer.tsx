@@ -5,32 +5,51 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Switch,
   Animated,
   Dimensions,
   Modal
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
+import { router } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 interface InvestmentSettingsDrawerProps {
   isVisible: boolean;
   onClose: () => void;
+  // Add these optional callbacks for dashboard integration
+  onQuestionnaire?: () => void;
+  onViewProfile?: () => void;
+  onViewRecommendations?: () => void;
 }
 
-const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isVisible, onClose }) => {
-  const { logout } = useAuth();
+const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isVisible, onClose, onQuestionnaire, onViewProfile, onViewRecommendations }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [autoInvest, setAutoInvest] = React.useState(false);
-  const [riskAlerts, setRiskAlerts] = React.useState(true);
-  const [performanceNotifications, setPerformanceNotifications] = React.useState(true);
-
-  // Create animated value for sliding from right
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+
+  // Create dynamic styles based on theme (must be inside component)
+  const dynamicStyles = {
+    container: {
+      backgroundColor: colors.card,
+      shadowColor: isDark ? '#000' : '#000',
+    },
+    title: {
+      color: colors.text,
+    },
+    sectionTitle: {
+      color: colors.text,
+    },
+    settingText: {
+      color: colors.text,
+    },
+    settingItem: {
+      borderBottomColor: colors.border,
+    },
+    versionText: {
+      color: colors.textSecondary,
+    }
+  };
 
   // Handle animation when visibility changes
   useEffect(() => {
@@ -53,44 +72,28 @@ const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isV
 
   const handleUpdateProfile = () => {
     onClose();
-    router.push({
-      pathname: '/screens/profile',
-      params: { source: 'investment' }
-    });
+    if (onViewProfile) {
+      onViewProfile();
+    } else {
+      router.push({ pathname: '/screens/profile', params: { source: 'investment' } });
+    }
   };
 
   const handleStartQuestionnaire = () => {
     onClose();
-    router.push('/screens/investment-questionnaire');
+    if (onQuestionnaire) {
+      onQuestionnaire();
+    } else {
+      router.push('/screens/investment-questionnaire');
+    }
   };
 
   const handleViewRecommendations = () => {
     onClose();
-    // Navigate to recommendations screen
-    // This would be implemented in a real app
-    console.log('Navigate to recommendations');
-  };
-
-  // Create dynamic styles based on theme
-  const dynamicStyles = {
-    container: {
-      backgroundColor: colors.card,
-      shadowColor: isDark ? '#000' : '#000',
-    },
-    title: {
-      color: colors.text,
-    },
-    sectionTitle: {
-      color: colors.text,
-    },
-    settingText: {
-      color: colors.text,
-    },
-    settingItem: {
-      borderBottomColor: colors.border,
-    },
-    versionText: {
-      color: colors.textSecondary,
+    if (onViewRecommendations) {
+      onViewRecommendations();
+    } else {
+      router.push('/screens/investment-recommendations?riskLevel=medium&amount=1000');
     }
   };
 
@@ -152,7 +155,7 @@ const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isV
             </TouchableOpacity>
           </View>
 
-          {/* Investment Preferences */}
+          {/* Investment Preferences
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Investment Preferences</Text>
 
@@ -194,7 +197,7 @@ const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isV
                 thumbColor={performanceNotifications ? colors.primary : "#f4f3f4"}
               />
             </View>
-          </View>
+          </View> */}
 
           {/* Display Options */}
           <View style={styles.section}>
@@ -217,7 +220,7 @@ const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isV
             </TouchableOpacity>
           </View>
 
-          {/* Data Management */}
+          {/* Data Management
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Data Management</Text>
 
@@ -236,7 +239,7 @@ const InvestmentSettingsDrawer: React.FC<InvestmentSettingsDrawerProps> = ({ isV
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-          </View>
+          </View> */}
         </ScrollView>
         </Animated.View>
       </View>

@@ -1,73 +1,23 @@
-// Export types from ChartTypes
-import type {
-  ChartType,
-  BarChartData,
-  TimeSeriesData,
-  ExpenseData,
-  HeatMapData,
-  LegendItem,
-  BaseChartProps,
-  AxisChartProps,
-  ColoredChartProps,
-  BarChartProps,
-  DonutChartProps,
-  TimeSeriesChartProps,
-  AreaChartProps,
-  HeatMapProps,
-  ExpenseChartProps
-} from './ChartTypes';
+// Import chart components
+import BarChart from './BarChart';
+import LineChart from './LineChart';
+import PieChart from './PieChart';
+import DonutChart from './DonutChart';
+import TimeSeriesChart from './TimeSeriesChart';
+import ChartSelector from './ChartSelector';
+import FinancialDataVisualizer from './FinancialDataVisualizer';
+import * as WebCharts from './WebCharts';
 
-// Export platform-specific components
-import {
-  BarChartComponent,
-  DonutChartComponent,
-  TimeSeriesChartComponent,
-  AreaChartComponent,
-  PlatformExpenseChart,
-  ChartSelector
-} from './PlatformCharts';
-
-// Export Gifted Charts implementations
-import {
-  GiftedBarChart,
-  GiftedDonutChart,
-  GiftedTimeSeriesChart,
-  GiftedAreaChart,
-  GiftedExpenseChart
-} from './GiftedCharts';
-
-// Export Web Charts implementations
-import {
-  WebBarChart,
-  WebDonutChart,
-  WebTimeSeriesChart,
-  WebAreaChart,
-  WebExpenseChart
-} from './WebCharts';
-
-// Named exports
+// Export components
 export {
-  // Platform-specific components
-  BarChartComponent,
-  DonutChartComponent,
-  TimeSeriesChartComponent,
-  AreaChartComponent,
-  PlatformExpenseChart as ExpenseChart,
+  BarChart,
+  LineChart,
+  PieChart,
+  DonutChart,
+  TimeSeriesChart,
   ChartSelector,
-
-  // Gifted Charts implementations
-  GiftedBarChart,
-  GiftedDonutChart,
-  GiftedTimeSeriesChart,
-  GiftedAreaChart,
-  GiftedExpenseChart,
-
-  // Web Charts implementations
-  WebBarChart,
-  WebDonutChart,
-  WebTimeSeriesChart,
-  WebAreaChart,
-  WebExpenseChart
+  FinancialDataVisualizer,
+  WebCharts
 };
 
 // Export types
@@ -76,7 +26,6 @@ export type {
   BarChartData,
   TimeSeriesData,
   ExpenseData,
-  HeatMapData,
   LegendItem,
   BaseChartProps,
   AxisChartProps,
@@ -84,29 +33,20 @@ export type {
   BarChartProps,
   DonutChartProps,
   TimeSeriesChartProps,
-  AreaChartProps,
-  HeatMapProps,
-  ExpenseChartProps
-};
+  ExpenseChartProps,
+  LineChartProps,
+  PieChartProps
+} from './ChartTypes';
 
-// Default export (required by Expo Router)
+// Default export for backward compatibility
 const ChartComponents = {
-  BarChartComponent,
-  DonutChartComponent,
-  TimeSeriesChartComponent,
-  AreaChartComponent,
-  ExpenseChart: PlatformExpenseChart,
+  BarChart,
+  LineChart,
+  PieChart,
+  DonutChart,
+  TimeSeriesChart,
   ChartSelector,
-  GiftedBarChart,
-  GiftedDonutChart,
-  GiftedTimeSeriesChart,
-  GiftedAreaChart,
-  GiftedExpenseChart,
-  WebBarChart,
-  WebDonutChart,
-  WebTimeSeriesChart,
-  WebAreaChart,
-  WebExpenseChart
+  FinancialDataVisualizer
 };
 
 export default ChartComponents;

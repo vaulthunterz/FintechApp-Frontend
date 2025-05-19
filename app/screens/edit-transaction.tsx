@@ -47,7 +47,7 @@ interface Transaction {
   subcategory_id?: string;
   time_of_transaction?: string;
   date?: string;
-  isExpense?: boolean;
+  is_expense?: boolean;
   transaction_id?: string;
 }
 
@@ -288,7 +288,7 @@ const EditTransactionScreen = () => {
       category_id: category || undefined,
       subcategory_id: subcategory || undefined,
       time_of_transaction: isoDateTime,
-      isExpense: isExpense,
+      is_expense: isExpense,
       date: isoDateTime.split('T')[0],
       transaction_id: originalTransactionId || undefined, // Keep the original transaction_id
     };

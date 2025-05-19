@@ -3,11 +3,11 @@ import { Platform } from 'react-native';
 import { getTokenWithRetry } from '../config/firebaseConfig';
 import Toast from 'react-native-toast-message';
 
-// Base URL for the API - this is different depending on the platform
+// Base URL for the API - this is different depending on the platform (https://fintrackke.com)
 export const getBaseUrl = () => {
   if (Platform.OS === 'web') {
     // For web, use localhost
-    return 'https://fintrackke.com';
+    return 'http://localhost:8080';
   } else if (Platform.OS === 'android') {
     // For Android devices, use ngrok URL
     return 'https://c34f-102-0-10-158.ngrok-free.app';

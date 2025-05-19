@@ -19,16 +19,26 @@ import api from '../../services/api';
 import { auth } from '../../config/firebaseConfig';
 
 const UserProfileManagement: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const { colors, isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState({
-    displayName: '',
-    email: '',
+    firstName: '',
+    lastName: '',
+    name: '',
     username: '',
+    email: '',
     date_joined: new Date(),
     last_login: new Date(),
     uid: ''
+  });
+  
+  // State for editing user profile
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedUserData, setEditedUserData] = useState({
+    firstName: '',
+    lastName: '',
+    username: ''
   });
 
   // Use Firebase user data directly from AuthContext
@@ -53,13 +63,26 @@ const UserProfileManagement: React.FC = () => {
           // Use username derived from email (remove domain part)
           const username = email ? email.split('@')[0] : '';
 
+          // Split username to create placeholder first/last name if needed
+          const nameParts = username.split(/[._-]/);
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.length > 1 ? nameParts[1] : '';
+          
           setUserData({
-            displayName: username, // No display name set during registration
-            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            name: `${firstName} ${lastName}`.trim(),
             username: username,
+            email: email,
             date_joined: creationTime,
             last_login: lastSignInTime,
             uid: user.uid || 'N/A'
+          });
+          
+          setEditedUserData({
+            firstName: firstName,
+            lastName: lastName,
+            username: username
           });
 
           console.log('User data set from Firebase:', {
@@ -107,7 +130,7 @@ const UserProfileManagement: React.FC = () => {
     },
     input: {
       color: colors.text,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.background,
       borderColor: colors.border,
     },
     infoLabel: {
@@ -160,10 +183,14 @@ const UserProfileManagement: React.FC = () => {
             try {
               setLoading(true);
               // Call API to delete account
-              await api.deleteUserAccount();
+              // Account deletion API call would go here
+              // await api.deleteUserAccount(user.uid);
+            
+              // For now, just log out the user
+              await logout();
 
               // Sign out the user
-              await signOut();
+              await auth.signOut();
 
               // Navigate to login screen
               router.replace('/screens/login');
@@ -193,16 +220,18 @@ const UserProfileManagement: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      router.replace('/screens/login');
+      setLoading(true);
+      await logout();
+      // Router navigation is handled in the AuthContext
     } catch (error) {
       console.error('Error signing out:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to sign out. Please try again.',
-        position: 'bottom'
+        text2: 'Failed to sign out. Please try again.'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -215,20 +244,130 @@ const UserProfileManagement: React.FC = () => {
         <View style={[styles.divider, dynamicStyles.divider]} />
 
         <View style={styles.infoContainer}>
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Name</Text>
-            <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.displayName || 'Not set'}</Text>
-          </View>
+          {!isEditing ? (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Name</Text>
+                <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.name || 'bb'}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Username</Text>
-            <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.username || 'Not set'}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Username</Text>
+                <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.username || 'bb'}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Email</Text>
-            <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.email || 'Not set'}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, dynamicStyles.infoLabel]}>Email</Text>
+                <Text style={[styles.infoValue, dynamicStyles.infoValue]}>{userData.email || 'bb@gmail.com'}</Text>
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.editButton, dynamicStyles.primaryButton]}
+                onPress={() => setIsEditing(true)}
+              >
+                <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Edit Profile</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, dynamicStyles.label]}>First Name</Text>
+                <TextInput
+                  style={[styles.input, dynamicStyles.input]}
+                  value={editedUserData.firstName}
+                  onChangeText={(text) => setEditedUserData({...editedUserData, firstName: text})}
+                  placeholder="Enter first name"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, dynamicStyles.label]}>Last Name</Text>
+                <TextInput
+                  style={[styles.input, dynamicStyles.input]}
+                  value={editedUserData.lastName}
+                  onChangeText={(text) => setEditedUserData({...editedUserData, lastName: text})}
+                  placeholder="Enter last name"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, dynamicStyles.label]}>Username</Text>
+                <TextInput
+                  style={[styles.input, dynamicStyles.input]}
+                  value={editedUserData.username}
+                  onChangeText={(text) => setEditedUserData({...editedUserData, username: text})}
+                  placeholder="Enter username"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+              
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.button, dynamicStyles.dangerButton, styles.cancelButton]}
+                  onPress={() => {
+                    setIsEditing(false);
+                    setEditedUserData({
+                      firstName: userData.firstName,
+                      lastName: userData.lastName,
+                      username: userData.username
+                    });
+                  }}
+                >
+                  <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.button, dynamicStyles.primaryButton, styles.saveButton]}
+                  onPress={async () => {
+                    try {
+                      setLoading(true);
+                      
+                      // Prepare data for API
+                      const profileData = {
+                        first_name: editedUserData.firstName,
+                        last_name: editedUserData.lastName,
+                        username: editedUserData.username
+                      };
+                      
+                      // Call the API to update the user profile
+                      await api.updateUserGeneralProfile(profileData);
+                      
+                      // Update local state
+                      const updatedUserData = {
+                        ...userData,
+                        firstName: editedUserData.firstName,
+                        lastName: editedUserData.lastName,
+                        name: `${editedUserData.firstName} ${editedUserData.lastName}`.trim(),
+                        username: editedUserData.username
+                      };
+                      setUserData(updatedUserData);
+                      setIsEditing(false);
+                      
+                      // Show success toast
+                      Toast.show({
+                        type: 'success',
+                        text1: 'Profile Updated',
+                        text2: 'Your profile has been updated successfully'
+                      });
+                    } catch (error) {
+                      console.error('Error updating profile:', error);
+                      Toast.show({
+                        type: 'error',
+                        text1: 'Update Failed',
+                        text2: 'Failed to update profile. Please try again.'
+                      });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  <Text style={[styles.accountButtonText, dynamicStyles.accountButtonText]}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -334,13 +473,56 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 16,
-    flex: 1,
+    width: 120,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '500',
-    flex: 2,
+    flex: 1,
     textAlign: 'right',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    height: 48,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    flex: 1,
+    marginRight: 8,
+  },
+  saveButton: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  editButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   accountButton: {
     borderRadius: 8,

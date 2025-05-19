@@ -14,7 +14,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
-import Toast from "react-native-toast-message";
+import { showErrorToast } from "../utils/toastUtils";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
@@ -24,23 +24,16 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please fill in all fields",
-      });
+      showErrorToast("Error", "Please fill in all fields");
       return;
     }
 
     try {
       await login(email, password);
+      // Success toast is shown in the AuthContext after successful login
     } catch (error) {
       console.error("Login error:", error);
-      Toast.show({
-        type: "error",
-        text1: "Login Failed",
-        text2: "Invalid email or password",
-      });
+      showErrorToast("Login Failed", "Invalid email or password");
     }
   };
 
@@ -119,7 +112,6 @@ const LoginScreen = () => {
           </View>
         </View>
       </ScrollView>
-      <Toast />
     </KeyboardAvoidingView>
   );
 };

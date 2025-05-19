@@ -8,7 +8,6 @@ import {
   BarChartProps,
   DonutChartProps,
   TimeSeriesChartProps,
-  AreaChartProps,
   ExpenseChartProps,
   DEFAULT_CHART_WIDTH,
   DEFAULT_CHART_HEIGHT,
@@ -18,8 +17,24 @@ import {
 // Define empty components as fallbacks
 const EmptyComponent = () => null;
 
-// Create a Victory components object
-const VictoryComponents = {
+// Create a Victory components object with proper typing
+interface VictoryComponentsType {
+  VictoryPie: React.ComponentType<any>;
+  VictoryBar: React.ComponentType<any>;
+  VictoryChart: React.ComponentType<any>;
+  VictoryAxis: React.ComponentType<any>;
+  VictoryLabel: React.ComponentType<any>;
+  VictoryLegend: React.ComponentType<any>;
+  VictoryLine: React.ComponentType<any>;
+  VictoryTooltip: React.ComponentType<any>;
+  VictoryVoronoiContainer: React.ComponentType<any>;
+  VictoryTheme: {
+    material: any;
+  };
+  [key: string]: any; // Keep index signature for dynamic access
+}
+
+const VictoryComponents: VictoryComponentsType = {
   VictoryPie: EmptyComponent,
   VictoryBar: EmptyComponent,
   VictoryChart: EmptyComponent,
@@ -27,8 +42,8 @@ const VictoryComponents = {
   VictoryLabel: EmptyComponent,
   VictoryLegend: EmptyComponent,
   VictoryLine: EmptyComponent,
-  VictoryArea: EmptyComponent,
-  VictoryScatter: EmptyComponent,
+  VictoryTooltip: EmptyComponent,
+  VictoryVoronoiContainer: EmptyComponent,
   VictoryTheme: { material: {} }
 };
 
@@ -40,9 +55,10 @@ if (Platform.OS === 'web') {
 
     // Update components if available
     if (Victory) {
-      Object.keys(VictoryComponents).forEach(key => {
+      const victoryKeys = Object.keys(VictoryComponents) as Array<keyof typeof Victory>;
+      victoryKeys.forEach((key) => {
         if (Victory[key]) {
-          VictoryComponents[key] = Victory[key];
+          (VictoryComponents as any)[key] = Victory[key];
         }
       });
     }
@@ -58,10 +74,7 @@ const {
   VictoryChart,
   VictoryAxis,
   VictoryLabel,
-  VictoryLegend,
   VictoryLine,
-  VictoryArea,
-  VictoryScatter,
   VictoryTheme
 } = VictoryComponents;
 
@@ -80,7 +93,7 @@ const WebUnsupportedPlaceholder: React.FC<{ title: string }> = ({ title }) => {
 
 // ==================== Web Bar Chart ====================
 export const WebBarChart: React.FC<BarChartProps> = (props) => {
-  const { data, title, width = DEFAULT_CHART_WIDTH, height = DEFAULT_CHART_HEIGHT, yAxisLabel, colors = DEFAULT_COLORS } = props;
+  const { data, title, width = DEFAULT_CHART_WIDTH, height = DEFAULT_CHART_HEIGHT, yAxisLabel = 'Amount (KES)', colors = DEFAULT_COLORS } = props;
   const { colors: themeColors } = useTheme();
 
   if (Platform.OS !== 'web') {
@@ -109,7 +122,7 @@ export const WebBarChart: React.FC<BarChartProps> = (props) => {
           }}
         >
           <VictoryAxis
-            tickFormat={(t) => `${t}`}
+            tickFormat={(t: string | number) => `${t}`}
             style={{
               axis: { stroke: themeColors.border },
               ticks: { stroke: themeColors.border },
@@ -118,7 +131,7 @@ export const WebBarChart: React.FC<BarChartProps> = (props) => {
           />
           <VictoryAxis
             dependentAxis
-            tickFormat={(t) => `${yAxisLabel ? yAxisLabel : ''}${t}`}
+            tickFormat={(t: string | number) => `${yAxisLabel ? yAxisLabel : ''}${t}`}
             style={{
               axis: { stroke: themeColors.border },
               ticks: { stroke: themeColors.border },
@@ -129,13 +142,13 @@ export const WebBarChart: React.FC<BarChartProps> = (props) => {
             data={chartData}
             style={{
               data: {
-                fill: ({ datum }) => datum.fill,
+                fill: ({ datum }: { datum: any }) => datum.fill,
               },
               labels: {
                 fill: themeColors.text
               }
             }}
-            labels={({ datum }) => `${datum.y}`}
+            labels={({ datum }: { datum: any }) => `${datum.y}`}
           />
         </VictoryChart>
       </View>
@@ -152,14 +165,25 @@ export const WebDonutChart: React.FC<DonutChartProps> = (props) => {
     return <WebUnsupportedPlaceholder title={title} />;
   }
 
-  const chartData = data.map((item, index) => ({
+  // Defensive: filter out items where y is not a number
+  const validData = Array.isArray(data) ? data.filter(item => typeof item.y === 'number' && !isNaN(item.y)) : [];
+  if (validData.length === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeColors.card, width }]}> 
+        <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
+        <Text style={{ color: themeColors.text, textAlign: 'center', marginTop: 20 }}>
+          No valid data for donut chart
+        </Text>
+      </View>
+    );
+  }
+  const chartData = validData.map((item, index) => ({
     x: item.x,
     y: item.y,
     fill: colors[index % colors.length]
   }));
-
   // Calculate total
-  const total = data.reduce((sum, item) => sum + item.y, 0);
+  const total = validData.reduce((sum, item) => sum + item.y, 0);
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
@@ -178,18 +202,18 @@ export const WebDonutChart: React.FC<DonutChartProps> = (props) => {
               fontSize: 12
             },
             data: {
-              fill: ({ datum }) => datum.fill
+              fill: ({ datum }: { datum: any }) => datum.fill
             }
           }}
-          labels={({ datum }) => `${datum.x}: ${Math.round((datum.y / total) * 100)}%`}
+          labels={({ datum }: { datum: any }) => `${datum.x}: ${Math.round((datum.y / total) * 100)}%`}
         />
       </View>
 
       <View style={styles.legend}>
-        {data.map((item, index) => (
+        {validData.map((item, index) => (
           <View key={index} style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: colors[index % colors.length] }]} />
-            <Text style={[styles.legendText, { color: themeColors.text }]}>
+            <Text style={[styles.legendText, { color: themeColors.text }]}> 
               {item.x}: {item.y.toLocaleString()}
             </Text>
           </View>
@@ -249,7 +273,7 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           }}
         >
           <VictoryAxis
-            tickFormat={(t) => typeof t === 'string' ? t : new Date(t).toLocaleDateString()}
+            tickFormat={(t: string | number) => typeof t === 'string' ? t : new Date(t).toLocaleDateString()}
             style={{
               axis: { stroke: themeColors.border },
               ticks: { stroke: themeColors.border },
@@ -258,7 +282,7 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           />
           <VictoryAxis
             dependentAxis
-            tickFormat={(t) => `${yAxisLabel ? yAxisLabel : ''}${t}`}
+            tickFormat={(t: string | number) => `${yAxisLabel ? yAxisLabel : ''}${t}`}
             style={{
               axis: { stroke: themeColors.border },
               ticks: { stroke: themeColors.border },
@@ -274,99 +298,6 @@ export const WebTimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
               }))}
               style={{
                 data: { stroke: colors[index % colors.length] }
-              }}
-            />
-          ))}
-        </VictoryChart>
-      </View>
-
-      {xAxisLabel && (
-        <Text style={[styles.axisLabel, { color: themeColors.textSecondary }]}>
-          {xAxisLabel}
-        </Text>
-      )}
-    </View>
-  );
-};
-
-// ==================== Web Area Chart ====================
-export const WebAreaChart: React.FC<AreaChartProps> = (props) => {
-  const {
-    data,
-    title,
-    width = DEFAULT_CHART_WIDTH,
-    height = DEFAULT_CHART_HEIGHT,
-    yAxisLabel,
-    xAxisLabel,
-    colors = DEFAULT_COLORS,
-    legendItems = []
-  } = props;
-  const { colors: themeColors } = useTheme();
-
-  if (Platform.OS !== 'web') {
-    return <WebUnsupportedPlaceholder title={title} />;
-  }
-
-  // Use provided legend items or generate from data
-  const chartLegendItems = legendItems.length > 0
-    ? legendItems
-    : data.map((_, index) => ({
-        name: `Series ${index + 1}`,
-        color: colors[index % colors.length]
-      }));
-
-  return (
-    <View style={[styles.container, { backgroundColor: themeColors.card, width }]}>
-      <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-
-      <View style={styles.legend}>
-        {chartLegendItems.map((item, index) => (
-          <View key={index} style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: item.color || colors[index % colors.length] }]} />
-            <Text style={[styles.legendText, { color: themeColors.text }]}>{item.name}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.chartContainer}>
-        <VictoryChart
-          theme={VictoryTheme.material}
-          width={width - 40}
-          height={height - 80}
-          padding={{ top: 20, bottom: 50, left: 60, right: 20 }}
-          style={{
-            background: { fill: themeColors.card },
-          }}
-        >
-          <VictoryAxis
-            tickFormat={(t) => typeof t === 'string' ? t : new Date(t).toLocaleDateString()}
-            style={{
-              axis: { stroke: themeColors.border },
-              ticks: { stroke: themeColors.border },
-              tickLabels: { fill: themeColors.textSecondary, fontSize: 10, angle: -45 }
-            }}
-          />
-          <VictoryAxis
-            dependentAxis
-            tickFormat={(t) => `${yAxisLabel ? yAxisLabel : ''}${t}`}
-            style={{
-              axis: { stroke: themeColors.border },
-              ticks: { stroke: themeColors.border },
-              tickLabels: { fill: themeColors.textSecondary, fontSize: 10 }
-            }}
-          />
-          {data.map((series, index) => (
-            <VictoryArea
-              key={`area-${index}`}
-              data={series.map(point => ({
-                x: typeof point.x === 'string' ? point.x : new Date(point.x),
-                y: point.y
-              }))}
-              style={{
-                data: {
-                  fill: `${colors[index % colors.length]}80`, // Add transparency
-                  stroke: colors[index % colors.length]
-                }
               }}
             />
           ))}
@@ -420,7 +351,7 @@ export const WebExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type
                 fontSize: 12
               }
             }}
-            labels={({ datum }) => `${datum.x}: ${Math.round((datum.y / data.reduce((sum, d) => sum + d.amount, 0)) * 100)}%`}
+            labels={({ datum }: { datum: any }) => `${datum.x}: ${Math.round((datum.y / data.reduce((sum, d) => sum + d.amount, 0)) * 100)}%`}
           />
         ) : (
           <VictoryChart
@@ -452,13 +383,23 @@ export const WebExpenseChart: React.FC<ExpenseChartProps> = ({ data, title, type
               data={chartData}
               style={{
                 data: {
-                  fill: ({ datum }) => datum.color,
+                  fill: ({ datum }: { datum: any }) => datum.color,
                 },
                 labels: {
-                  fill: colors.text
+                  fill: colors.text,
+                  fontSize: 10
                 }
               }}
-              labels={({ datum }) => `${datum.y}`}
+              labels={({ datum }: { datum: any }) => datum.y.toLocaleString()}
+              labelComponent={
+                <VictoryLabel
+                  dy={-5}
+                  style={{
+                    fontSize: 10,
+                    fill: colors.text
+                  }}
+                />
+              }
             />
           </VictoryChart>
         )}
@@ -523,12 +464,11 @@ const styles = StyleSheet.create({
   },
 });
 
-// Default export for Expo Router
-const WebCharts = {
+// Export only the remaining web chart components
+export const WebCharts = {
   WebBarChart,
   WebDonutChart,
   WebTimeSeriesChart,
-  WebAreaChart,
   WebExpenseChart
 };
 

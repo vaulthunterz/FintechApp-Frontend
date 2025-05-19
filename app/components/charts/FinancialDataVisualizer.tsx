@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import {
-  BarChartComponent,
-  AreaChartComponent,
-  DonutChartComponent,
-  TimeSeriesChartComponent,
-  ChartSelector,
-  ChartType
+import { View, StyleSheet, Dimensions, Text, Platform } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { formatCurrency, formatTooltipValue, getAbbreviatedLabel } from '../../utils/chartUtils';
+import { 
+  BarChart,
+  DonutChart,
+  TimeSeriesChart,
+  ChartSelector
 } from './index';
+import { DEFAULT_COLORS } from './ChartTypes';
+
+type ChartType = 'line' | 'bar' | 'pie' | 'donut' | 'timeSeries';
 
 interface Transaction {
   id: string;
@@ -32,16 +35,14 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
   timePeriod,
   width = Dimensions.get('window').width - 40
 }) => {
-  const [selectedChart, setSelectedChart] = useState<ChartType>('line');
+  const [selectedChart, setSelectedChart] = useState<ChartType>('bar');
   const [availableCharts, setAvailableCharts] = useState<ChartType[]>(['line', 'bar', 'pie', 'donut']);
 
   // Chart data states
   const [barData, setBarData] = useState<any>(null);
   const [pieData, setPieData] = useState<any>(null);
   const [lineData, setLineData] = useState<any>(null);
-  const [areaData, setAreaData] = useState<any>(null);
   const [timeSeriesData, setTimeSeriesData] = useState<any>(null);
-  const [heatMapData, setHeatMapData] = useState<any>(null);
 
   // Process transactions data for different chart types
   useEffect(() => {
@@ -64,22 +65,38 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
     const netAmount = totalIncome - totalExpenses;
 
-    // Prepare line chart data
+    // Prepare line chart data with formatted values
     const lineChartData = {
       labels: ["Income", "Expenses", "Net"],
       datasets: [
         {
-          data: [totalIncome, totalExpenses, netAmount]
+          data: [totalIncome, totalExpenses, netAmount],
+          colors: ['#4CAF50', '#F44336', '#2196F3']
         }
       ]
     };
     setLineData(lineChartData);
 
-    // Prepare bar chart data
+    // Prepare bar chart data with formatted values
     const barChartData = [
-      { x: "Income", y: totalIncome },
-      { x: "Expenses", y: totalExpenses },
-      { x: "Net", y: netAmount }
+      { 
+        x: "Income", 
+        y: totalIncome,
+        label: formatCurrency(totalIncome),
+        color: '#4CAF50'
+      },
+      { 
+        x: "Expenses", 
+        y: totalExpenses,
+        label: formatCurrency(totalExpenses),
+        color: '#F44336'
+      },
+      { 
+        x: "Net", 
+        y: netAmount,
+        label: formatCurrency(netAmount),
+        color: netAmount >= 0 ? '#2196F3' : '#FF9800'
+      }
     ];
     setBarData(barChartData);
 
@@ -93,11 +110,37 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
           : transaction.category?.name || 'Uncategorized';
 
         if (!isNaN(amount)) {
-          const currentAmount = categoryMap.get(categoryName) || 0;
-          categoryMap.set(categoryName, currentAmount + amount);
+          const currentAmount = categoryMap.get(categoryName)?.amount || 0;
+          const count = categoryMap.get(categoryName)?.count || 0;
+          categoryMap.set(categoryName, {
+            amount: currentAmount + amount,
+            count: count + 1
+          });
         }
       }
     });
+    
+    // Convert to array and sort by amount (descending)
+    const sortedCategories = Array.from(categoryMap.entries())
+      .map(([name, { amount }]) => ({
+        name,
+        amount,
+        percentage: (amount / totalExpenses) * 100
+      }))
+      .sort((a, b) => b.amount - a.amount);
+      
+    // Limit to top 5 categories and group the rest as 'Others'
+    const topCategories = sortedCategories.slice(0, 5);
+    const otherCategories = sortedCategories.slice(5);
+    const otherTotal = otherCategories.reduce((sum, cat) => sum + cat.amount, 0);
+    
+    if (otherTotal > 0) {
+      topCategories.push({
+        name: 'Others',
+        amount: otherTotal,
+        percentage: (otherTotal / totalExpenses) * 100
+      });
+    }
 
     // Convert category map to array and sort by amount
     const categorySummary = Array.from(categoryMap.entries())
@@ -122,16 +165,6 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
       y: item.amount
     }));
 
-    // Prepare area chart data (monthly expenses by category)
-    // This is a simplified example - in a real app, you'd group by month
-    const areaChartData = [
-      categorySummary.map((item, index) => ({
-        x: index.toString(),
-        y: item.amount
-      }))
-    ];
-    setAreaData(areaChartData);
-
     // Prepare time series data
     // This is a simplified example - in a real app, you'd use actual dates
     const timeSeriesData = [
@@ -146,122 +179,57 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
     ];
     setTimeSeriesData(timeSeriesData);
 
-    // Prepare heatmap data (day of week vs. time of day)
-    // This is a simplified example with random data
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const times = ["Morning", "Afternoon", "Evening", "Night"];
-
-    const heatmapData = [];
-    for (let i = 0; i < days.length; i++) {
-      for (let j = 0; j < times.length; j++) {
-        // Random spending amount between 10 and 100
-        const heat = Math.floor(Math.random() * 90) + 10;
-        heatmapData.push({ x: i, y: j, heat });
-      }
-    }
-
-    setHeatMapData({
-      data: heatmapData,
-      xLabels: days,
-      yLabels: times
-    });
-
     // Update available charts based on data
     const charts: ChartType[] = ['line', 'bar'];
     if (pieChartData.length > 0) charts.push('pie', 'donut');
-    if (transactions.length > 5) charts.push('area', 'timeSeries');
-    if (transactions.length > 10) charts.push('heatmap');
+    if (transactions.length > 5) charts.push('timeSeries');
 
     setAvailableCharts(charts);
   }, [transactions, timePeriod]);
-
-  // Chart configuration
-  const chartConfig = {
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
-    decimalPlaces: 2,
-    color: (opacity = 1) => `rgba(30, 136, 229, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: "6",
-      strokeWidth: "2",
-      stroke: "#1e88e5",
-    },
-  };
 
   // Render the selected chart type
   const renderChart = () => {
     switch (selectedChart) {
       case 'bar':
-        return barData ? (
-          <BarChartComponent
-            data={barData}
-            title="Income vs. Expenses"
-            yAxisLabel="Amount"
-            colors={['#4CAF50', '#F44336', '#1976D2']}
+        return (
+          <BarChart
+            data={barData || []}
+            title="Financial Overview"
+            yAxisLabel="KES"
+            colors={['#4CAF50', '#F44336', '#2196F3']}
           />
-        ) : null;
+        );
 
-      case 'pie':
       case 'donut':
-        return pieData && pieData.length > 0 ? (
-          <DonutChartComponent
-            data={pieData.map(item => ({ x: item.name, y: item.amount }))}
-            title="Expense Categories"
-            colors={pieData.map(item => item.color)}
+        return (
+          <DonutChart
+            data={pieData || []}
+            title="Expense Breakdown"
+            colors={DEFAULT_COLORS}
           />
-        ) : null;
-
-      case 'area':
-        return areaData ? (
-          <AreaChartComponent
-            data={areaData}
-            title="Expense Trends by Category"
-            yAxisLabel="Amount"
-            xAxisLabel="Categories"
-            legendItems={pieData?.map(item => ({ name: item.name, color: item.color })) || []}
-          />
-        ) : null;
+        );
 
       case 'timeSeries':
-        return timeSeriesData ? (
-          <TimeSeriesChartComponent
-            data={timeSeriesData}
-            title="Monthly Expense Trend"
-            yAxisLabel="Amount"
-            xAxisLabel="Month"
-            legendItems={[{ name: 'Expenses', color: '#1976d2' }]}
+        return (
+          <TimeSeriesChart
+            data={timeSeriesData || []}
+            title="Transaction History"
+            yAxisLabel="KES"
+            colors={DEFAULT_COLORS}
           />
-        ) : null;
+        );
 
-      case 'heatmap':
-        // Heatmap is not implemented in the consolidated files yet
-        return null;
-
-      case 'line':
       default:
-        return lineData ? (
-          <TimeSeriesChartComponent
-            data={[lineData.datasets[0].data.map((y, i) => ({ x: lineData.labels[i], y }))]}
-            title="Income vs. Expenses"
-            yAxisLabel="Amount"
-            xAxisLabel="Category"
-            legendItems={[{ name: 'Overview', color: '#1e88e5' }]}
-          />
-        ) : null;
+        return null;
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width }]}>
       <ChartSelector
         selectedChart={selectedChart}
-        onSelectChart={setSelectedChart}
         availableCharts={availableCharts}
+        onSelectChart={setSelectedChart}
       />
       {renderChart()}
     </View>

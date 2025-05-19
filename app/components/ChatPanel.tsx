@@ -95,6 +95,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
 
       // Extract the response text
       let botResponse = response.text || "I'm not sure how to help with that yet.";
+      
+      // Format the response to avoid asterisks
+      botResponse = formatChatbotResponse(botResponse);
 
       // Fallback to hardcoded responses if AI service fails
       if (!botResponse || botResponse.trim() === '') {
@@ -159,6 +162,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
     return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Format chatbot response to avoid asterisks and bullets
+  const formatChatbotResponse = (text: string) => {
+    // Replace markdown-style bold (**text**) with actual bold styling
+    let formattedText = text;
+    
+    // First handle **bold text** pattern (replace with plain text, will be styled with fontWeight in the component)
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '$1');
+    
+    // Remove any remaining asterisks
+    formattedText = formattedText.replace(/\*/g, '');
+    
+    // Remove bullet points
+    formattedText = formattedText.replace(/•/g, '');
+    formattedText = formattedText.replace(/\s*-\s+/g, ' ');
+    
+    return formattedText;
+  };
+
   return (
     <Animated.View style={[styles.container, { height: panelHeight }]}>
       <TouchableOpacity
@@ -202,7 +223,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onClose }) => {
                   message.isUser ? styles.userBubble : styles.botBubble
                 ]}
               >
-                <Text style={styles.messageText}>{message.text}</Text>
+                <Text style={[styles.messageText, !message.isUser && styles.botMessageText]}>{message.text}</Text>
                 <Text style={styles.messageTime}>{formatTime(message.timestamp)}</Text>
               </View>
             ))}
@@ -309,6 +330,9 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     color: '#333',
+  },
+  botMessageText: {
+    fontWeight: '500',
   },
   messageTime: {
     fontSize: 10,

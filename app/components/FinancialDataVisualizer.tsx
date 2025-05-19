@@ -5,7 +5,6 @@ import {
   BarChartComponent,
   DonutChartComponent,
   TimeSeriesChartComponent,
-  AreaChartComponent,
   ChartSelector,
   ChartType
 } from './charts';
@@ -38,18 +37,17 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
   showFilters = true
 }) => {
   const { colors } = useTheme();
-  const [selectedChart, setSelectedChart] = useState<ChartType>('line');
-  const [availableCharts, setAvailableCharts] = useState<ChartType[]>(['line', 'bar', 'pie', 'donut']);
+  const [selectedChart, setSelectedChart] = useState<ChartType>('bar');
+  const [availableCharts, setAvailableCharts] = useState<ChartType[]>(['line', 'bar', 'pie', 'donut', 'timeSeries']);
   const [filters, setFilters] = useState<FilterOptions>(getDefaultFilters());
   const [filteredData, setFilteredData] = useState<Transaction[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
   // Chart data states
-  const [barData, setBarData] = useState<Array<{x: string; y: number}>>([]);
-  const [pieData, setPieData] = useState<Array<{name: string; amount: number; color: string; legendFontColor: string; legendFontSize: number}>>([]);
-  const [lineData, setLineData] = useState<{labels: string[]; datasets: Array<{data: number[]}>}>({ labels: [], datasets: [{ data: [] }] });
-  const [areaData, setAreaData] = useState<Array<Array<{x: string; y: number}>>>([[]]);
-  const [timeSeriesData, setTimeSeriesData] = useState<Array<Array<{x: string; y: number}>>>([[]]);
+  const [barData, setBarData] = useState<any>(null);
+  const [pieData, setPieData] = useState<any>(null);
+  const [lineData, setLineData] = useState<any>(null);
+  const [timeSeriesData, setTimeSeriesData] = useState<any>(null);
 
   // Extract categories from transactions
   useEffect(() => {
@@ -140,37 +138,10 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
 
     // Pie and donut charts use the same data in our consolidated version
 
-    // Prepare area chart data (monthly expenses by category)
-    // This is a simplified example - in a real app, you'd group by month
-    const areaChartData = [
-      categorySummary.map((item, index) => ({
-        x: index.toString(),
-        y: item.amount
-      }))
-    ];
-    setAreaData(areaChartData);
-
-    // Prepare time series data
-    // This is a simplified example - in a real app, you'd use actual dates
-    const timeSeriesData = [
-      [
-        { x: "Jan", y: totalExpenses * 0.8 },
-        { x: "Feb", y: totalExpenses * 0.9 },
-        { x: "Mar", y: totalExpenses * 1.1 },
-        { x: "Apr", y: totalExpenses * 1.0 },
-        { x: "May", y: totalExpenses * 1.2 },
-        { x: "Jun", y: totalExpenses }
-      ]
-    ];
-    setTimeSeriesData(timeSeriesData);
-
-      // Heatmap is no longer used in the consolidated version
-
     // Update available charts based on data
     const charts: ChartType[] = ['line', 'bar'];
     if (pieChartData.length > 0) charts.push('pie', 'donut');
-    if (filteredData.length > 5) charts.push('area', 'timeSeries');
-    if (filteredData.length > 10) charts.push('heatmap');
+    if (filteredData.length > 5) charts.push('timeSeries');
 
     setAvailableCharts(charts);
   }, [filteredData]);
@@ -200,17 +171,6 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
           />
         ) : null;
 
-      case 'area':
-        return areaData ? (
-          <AreaChartComponent
-            data={areaData}
-            title="Expense Trends by Category"
-            yAxisLabel="Amount"
-            xAxisLabel="Categories"
-            legendItems={pieData?.map((item: {name: string; color: string}) => ({ name: item.name, color: item.color })) || []}
-          />
-        ) : null;
-
       case 'timeSeries':
         return timeSeriesData ? (
           <TimeSeriesChartComponent
@@ -221,10 +181,6 @@ const FinancialDataVisualizer: React.FC<FinancialDataVisualizerProps> = ({
             legendItems={[{ name: 'Expenses', color: '#1976d2' }]}
           />
         ) : null;
-
-      case 'heatmap':
-        // Heatmap is not implemented in the consolidated files yet
-        return null;
 
       case 'line':
       default:

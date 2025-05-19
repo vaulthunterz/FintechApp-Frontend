@@ -4,7 +4,7 @@
 import { Dimensions } from 'react-native';
 
 // Chart type definitions
-export type ChartType = 'line' | 'bar' | 'pie' | 'donut' | 'area' | 'timeSeries' | 'heatmap';
+export type ChartType = 'line' | 'bar' | 'pie' | 'donut' | 'timeSeries';
 
 // Common chart data interfaces
 export interface BarChartData {
@@ -21,12 +21,6 @@ export interface ExpenseData {
   category: string;
   amount: number;
   color: string;
-}
-
-export interface HeatMapData {
-  x: number;
-  y: number;
-  heat: number;
 }
 
 export interface LegendItem {
@@ -59,19 +53,21 @@ export interface DonutChartProps extends ColoredChartProps {
   data: BarChartData[];
 }
 
+export interface PieChartProps extends ColoredChartProps {
+  data: BarChartData[];
+  innerRadius?: number;
+  labelRadius?: number;
+  padAngle?: number;
+}
+
+export interface LineChartProps extends TimeSeriesChartProps {
+  // Line chart specific props can be added here
+}
+
 export interface TimeSeriesChartProps extends AxisChartProps, ColoredChartProps {
   data: TimeSeriesData[][];
   legendItems?: LegendItem[];
   showPoints?: boolean;
-}
-
-export interface AreaChartProps extends TimeSeriesChartProps {}
-
-export interface HeatMapProps extends BaseChartProps {
-  data: HeatMapData[];
-  xAxisLabel?: string;
-  yAxisLabel?: string;
-  colorScale?: string[];
 }
 
 export interface ExpenseChartProps {
@@ -93,9 +89,7 @@ const ChartTypesExport = {
     BAR: 'bar',
     PIE: 'pie',
     DONUT: 'donut',
-    AREA: 'area',
-    TIME_SERIES: 'timeSeries',
-    HEATMAP: 'heatmap'
+    TIME_SERIES: 'timeSeries'
   },
   DEFAULT_CHART_WIDTH,
   DEFAULT_CHART_HEIGHT,

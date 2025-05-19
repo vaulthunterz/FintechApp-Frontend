@@ -369,7 +369,7 @@ const HomeScreen = () => {
           </View>
           <View style={styles.transactionRight}>
             <Text style={[styles.transactionAmount, { color: amountColor }]}>
-              {amountPrefix}${isNaN(amount) ? '0.00' : amount.toFixed(2)}
+              {amountPrefix}KES {isNaN(amount) ? '0.00' : parseFloat(String(amount)).toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
           </Text>
           </View>
         </View>
@@ -526,21 +526,21 @@ const HomeScreen = () => {
               <View style={[styles.balanceCard, styles.incomeCard]}>
                 <Text style={styles.balanceLabel}>Income</Text>
                 <Text style={styles.balanceValue}>
-                  ${statistics?.totalIncome.toFixed(2) || "0.00"}
+                  KES {statistics ? parseFloat(String(statistics.totalIncome)).toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}
                 </Text>
               </View>
 
               <View style={[styles.balanceCard, styles.expenseCard]}>
                 <Text style={styles.balanceLabel}>Expenses</Text>
                 <Text style={styles.balanceValue}>
-                  ${statistics?.totalExpenses.toFixed(2) || "0.00"}
+                  KES {statistics ? parseFloat(String(statistics.totalExpenses)).toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}
                 </Text>
               </View>
 
               <View style={[styles.balanceCard, styles.netCard]}>
                 <Text style={styles.balanceLabel}>Net</Text>
                 <Text style={styles.balanceValue}>
-                  ${statistics?.netAmount.toFixed(2) || "0.00"}
+                  KES {statistics ? parseFloat(String(statistics.netAmount)).toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}
                 </Text>
               </View>
             </View>

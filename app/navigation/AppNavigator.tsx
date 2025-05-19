@@ -16,6 +16,7 @@ import AddTransactionScreen from '../screens/add-transaction';
 import EditTransactionScreen from '../screens/edit-transaction';
 import MPESAHistoryScreen from '../screens/mpesa-history';
 import InvestmentQuestionnaireScreen from '../screens/investment-questionnaire';
+import InvestmentDashboard from '../screens/fixed-investment-dashboard';
 import SettingsScreen from '../screens/settings';
 import ModelMetricsScreen from '../screens/model-metrics';
 
@@ -136,8 +137,8 @@ const InvestmentStackNavigator = () => {
     >
       <InvestmentStack.Screen
         name="Investment"
-        component={HomeScreen}
-        options={{ title: 'Investments' }}
+        component={InvestmentDashboard}
+        options={{ title: 'Investment Dashboard' }}
       />
       <InvestmentStack.Screen
         name="Questionnaire"

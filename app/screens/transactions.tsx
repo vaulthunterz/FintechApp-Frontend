@@ -22,7 +22,8 @@ import { auth } from "../config/firebaseConfig";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from "date-fns";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ExpenseChart } from "../components/charts";
+import { FinancialDataVisualizer } from "../components/charts";
+import ChatPanel from "../components/ChatPanel";
 
 // Define transaction interface
 interface Transaction {
@@ -31,7 +32,7 @@ interface Transaction {
   description: string;
   category: string | { id: string; name: string };
   date: string;
-  isExpense: boolean;
+  is_expense: boolean;
   merchant_name?: string;
   time_of_transaction?: string;
 }
@@ -49,6 +50,7 @@ const TransactionsScreen = () => {
   const [isFromDatePickerVisible, setFromDatePickerVisible] = useState(false);
   const [isToDatePickerVisible, setToDatePickerVisible] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [showChatPanel, setShowChatPanel] = useState(false);
 
   // Pagination state
   const [paginationInfo, setPaginationInfo] = useState<{
@@ -229,7 +231,7 @@ const TransactionsScreen = () => {
         if (isNaN(date.getTime())) {
           return "No date";
         }
-        return date.toLocaleDateString();
+        return format(date, 'MMM dd, yyyy');
       } catch (e) {
         console.error("Invalid date format:", dateString);
         return "No date";
@@ -256,10 +258,10 @@ const TransactionsScreen = () => {
         <Text
           style={[
             styles.transactionAmount,
-            { color: item.isExpense ? colors.error : colors.success },
+            { color: item.is_expense ? colors.error : colors.success },
           ]}
         >
-          {item.isExpense ? "-" : "+"}${parseFloat(String(item.amount)).toFixed(2)}
+          {item.is_expense ? "-" : "+"}KES {parseFloat(String(item.amount)).toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
         </Text>
       </TouchableOpacity>
     );
@@ -268,6 +270,20 @@ const TransactionsScreen = () => {
   const toggleDrawer = () => {
     setDrawerVisible(!drawerVisible);
   };
+
+  const toggleChatPanel = () => {
+    setShowChatPanel(!showChatPanel);
+  };
+
+  // Pie chart data: aggregate expenses by category for pie chart
+  const categoryTotals: Record<string, number> = {};
+  filteredTransactions.forEach(tx => {
+    if (tx.is_expense) {
+      const cat = typeof tx.category === 'string' ? tx.category : tx.category?.name || 'Uncategorized';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(tx.amount);
+    }
+  });
+  const pieData = Object.entries(categoryTotals).map(([x, y]) => ({ x, y }));
 
   // Create dynamic styles based on theme
   const dynamicStyles = {
@@ -400,34 +416,18 @@ const TransactionsScreen = () => {
         </View>
       ) : filteredTransactions.length > 0 ? (
         <ScrollView style={{ flex: 1 }}>
-          {/* Expense Chart */}
-          <ExpenseChart
-            data={[
-              { category: 'Food', amount: 250, color: '#FF6384' },
-              { category: 'Transport', amount: 150, color: '#36A2EB' },
-              { category: 'Entertainment', amount: 100, color: '#FFCE56' },
-              { category: 'Shopping', amount: 200, color: '#4BC0C0' },
-              { category: 'Utilities', amount: 120, color: '#9966FF' },
-            ]}
-            title="Monthly Expenses"
-            type="pie"
-            period="June 2023"
-          />
-
-          {/* Bar Chart */}
-          <ExpenseChart
-            data={[
-              { category: 'Jan', amount: 1200, color: '#FF6384' },
-              { category: 'Feb', amount: 1900, color: '#36A2EB' },
-              { category: 'Mar', amount: 1500, color: '#FFCE56' },
-              { category: 'Apr', amount: 2100, color: '#4BC0C0' },
-              { category: 'May', amount: 1800, color: '#9966FF' },
-              { category: 'Jun', amount: 2400, color: '#FF9F40' },
-            ]}
-            title="Expense Trend"
-            type="bar"
-            period="First Half 2023"
-          />
+          {/* Pie chart for category distribution */}
+          {pieData.length > 0 && (
+            <View style={{ marginTop: 20, marginHorizontal: 15, backgroundColor: colors.card, borderRadius: 10, padding: 10 }}>
+              <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Spending by Category</Text>
+              <FinancialDataVisualizer
+                transactions={filteredTransactions}
+                timePeriod={null}
+                width={undefined}
+                pieData={pieData}
+              />
+            </View>
+          )}
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20, marginLeft: 15 }]}>Transaction History</Text>
 
@@ -475,6 +475,20 @@ const TransactionsScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Chat FAB */}
+      <TouchableOpacity
+        style={[styles.chatButtonFab, { backgroundColor: colors.primary }]}
+        onPress={toggleChatPanel}
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color="white" />
+      </TouchableOpacity>
+
+      {/* Chat Panel as overlay */}
+      {showChatPanel && (
+        <ChatPanel onClose={() => setShowChatPanel(false)} />
+      )}
+
       <Toast />
     </View>
   );
@@ -630,6 +644,23 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: 14,
+  },
+  chatButtonFab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 999,
   },
 });
 

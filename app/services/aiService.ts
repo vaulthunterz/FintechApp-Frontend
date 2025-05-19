@@ -110,18 +110,61 @@ export const getInvestmentRecommendations = async (userProfile: any, recommender
     const url = `${API_BASE_URL}/api/ai/investment/predict/`;
     console.log('Investment recommendations URL:', url);
 
+    // Log the request payload for debugging
+    console.log('Request payload:', JSON.stringify({
+      user_profile: userProfile,
+      recommender_type: recommenderType
+    }, null, 2));
+
+    const headers = await getHeaders();
+    console.log('Request headers:', headers);
+
     const response = await axios.post(
       url,
       {
         user_profile: userProfile,
         recommender_type: recommenderType
       },
-      { headers: await getHeaders() }
+      { headers }
     );
+    
+    console.log('Investment recommendations response:', JSON.stringify(response.data, null, 2));
     return response.data;
-  } catch (error) {
+  } catch (error: any) { // Add type annotation
     console.error('Error getting investment recommendations:', error);
-    throw error;
+    
+    // Provide more detailed error information
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+      
+      // Return a structured error object instead of throwing
+      return {
+        error: true,
+        status: error.response.status,
+        message: error.response.data?.error || 'Server error',
+        recommendations: [] // Empty recommendations array
+      };
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Error request:', error.request);
+      return {
+        error: true,
+        message: 'No response received from server',
+        recommendations: [] // Empty recommendations array
+      };
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error message:', error.message);
+      return {
+        error: true,
+        message: error.message || 'Unknown error occurred',
+        recommendations: [] // Empty recommendations array
+      };
+    }
   }
 };
 

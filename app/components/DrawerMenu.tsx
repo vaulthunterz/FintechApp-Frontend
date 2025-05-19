@@ -94,18 +94,18 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({ isVisible, onClose }) => {
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => handleNavigation('/screens/model-metrics')}
+            onPress={() => handleNavigation('/screens/profile')}
           >
-            <Ionicons name="analytics-outline" size={24} color={colors.textSecondary} />
-            <Text style={[styles.menuItemText, dynamicStyles.menuItemText]}>Model Metrics</Text>
+            <Ionicons name="person-outline" size={24} color={colors.textSecondary} />
+            <Text style={[styles.menuItemText, dynamicStyles.menuItemText]}>User Profile</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => handleNavigation('/screens/settings')}
+            onPress={() => handleNavigation('/screens/profile?source=investment')}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
-            <Text style={[styles.menuItemText, dynamicStyles.menuItemText]}>Settings</Text>
+            <Ionicons name="briefcase-outline" size={24} color={colors.textSecondary} />
+            <Text style={[styles.menuItemText, dynamicStyles.menuItemText]}>Investment Portfolio</Text>
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>

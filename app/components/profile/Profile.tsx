@@ -40,6 +40,12 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
   const [questionnaire, setQuestionnaire] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [userDetails, setUserDetails] = useState({
+    firstName: '',
+    lastName: '',
+    email: user?.email || '',
+    username: ''
+  });
   const [formData, setFormData] = useState<ProfileData>({
     risk_tolerance: '',
     investment_experience: '',
@@ -54,11 +60,22 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
         console.log('Fetching profile, questionnaire, and portfolio data...');
 
         // Make API calls to get user profile, questionnaire data, and portfolio summary
-        const [profileResponse, questionnaireStatus, portfolioSummary] = await Promise.all([
+        const [profileResponse, questionnaireStatus, portfolioSummary, userGeneralProfile] = await Promise.all([
           api.fetchUserProfiles(),
           api.checkQuestionnaireStatus(),
-          api.getPortfolioSummary()
+          api.getPortfolioSummary(),
+          api.fetchUserGeneralProfile()
         ]);
+        
+        // Extract user details from the general profile
+        if (userGeneralProfile) {
+          setUserDetails({
+            firstName: userGeneralProfile.first_name || '',
+            lastName: userGeneralProfile.last_name || '',
+            email: userGeneralProfile.email || user?.email || '',
+            username: userGeneralProfile.username || ''
+          });
+        }
 
         console.log('API responses:', { profileResponse, questionnaireStatus, portfolioSummary });
 
@@ -409,7 +426,7 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
 
   return (
     <ScrollView style={[styles.container, dynamicStyles.container]}>
-      <Text style={[styles.title, dynamicStyles.title]}>Your Investment Portfolio</Text>
+      <Text style={[styles.title, dynamicStyles.title]}>Investment Portfolio</Text>
 
       {/* Always render the analytics component for debugging */}
       {profile ? (
@@ -488,8 +505,6 @@ const Profile: React.FC<ProfileProps> = ({ isInvestmentPortfolio = false }) => {
               placeholderTextColor={colors.textSecondary}
             />
           </View>
-
-
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity

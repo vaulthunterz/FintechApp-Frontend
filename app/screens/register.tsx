@@ -13,7 +13,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
-import Toast from "react-native-toast-message";
+import { showSuccessToast, showErrorToast } from "../utils/toastUtils";
 import api from "../services/api";
 
 const RegisterScreen = () => {
@@ -30,20 +30,12 @@ const RegisterScreen = () => {
   const handleRegister = async () => {
     // Validate all required fields
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please fill in all fields",
-      });
+      showErrorToast("Error", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Passwords do not match",
-      });
+      showErrorToast("Error", "Passwords do not match");
       return;
     }
 
@@ -69,16 +61,16 @@ const RegisterScreen = () => {
             firebase_uid: userCredential.user.uid
           });
 
-          Toast.show({
-            type: "success",
-            text1: "Registration Successful",
-            text2: "Your account has been created",
-          });
+          showSuccessToast("Registration Successful", "Redirecting to home...");
 
-          // Navigate to home screen after a short delay to ensure everything is saved
-          setTimeout(() => {
-            router.replace('/');
-          }, 500);
+          // Add a small delay to ensure the success message is visible
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Clear any existing navigation state and redirect to home
+          router.replace({
+            pathname: '/',
+            params: { refresh: 'true' } // Force refresh on home screen
+          });
         } catch (profileError) {
           console.error("Error updating user profile:", profileError);
           // Continue anyway since the Firebase account was created
@@ -86,11 +78,7 @@ const RegisterScreen = () => {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      Toast.show({
-        type: "error",
-        text1: "Registration Failed",
-        text2: error.message || "Please try again later",
-      });
+      showErrorToast("Registration Failed", error.message || "Please try again later");
     } finally {
       setIsSubmitting(false);
     }
@@ -227,7 +215,6 @@ const RegisterScreen = () => {
           </View>
         </View>
       </ScrollView>
-      <Toast />
     </KeyboardAvoidingView>
   );
 };

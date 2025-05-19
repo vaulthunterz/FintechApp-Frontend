@@ -283,9 +283,9 @@ const ProfileAnalytics: React.FC<ProfileAnalyticsProps> = ({ profile, questionna
 
   // Format currency values
   const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KES',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value);

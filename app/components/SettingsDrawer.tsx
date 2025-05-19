@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
+import { showErrorToast } from '../utils/toastUtils';
 
 interface SettingsDrawerProps {
   isVisible: boolean;
@@ -57,8 +57,9 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
     try {
       await logout();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Logout error:', error);
+      showErrorToast('Logout Error', error.message || 'Failed to log out');
     }
   };
 
@@ -147,23 +148,6 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isVisible, onClose }) =
                 onValueChange={setNotifications}
                 trackColor={{ false: "#767577", true: "#81b0ff" }}
                 thumbColor={notifications ? "#1976d2" : "#f4f3f4"}
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Security</Text>
-
-            <View style={[styles.settingItem, dynamicStyles.settingItem]}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="finger-print-outline" size={24} color={colors.text} style={styles.settingIcon} />
-                <Text style={[styles.settingText, dynamicStyles.settingText]}>Biometric Authentication</Text>
-              </View>
-              <Switch
-                value={biometricAuth}
-                onValueChange={setBiometricAuth}
-                trackColor={{ false: "#767577", true: "#81b0ff" }}
-                thumbColor={biometricAuth ? "#1976d2" : "#f4f3f4"}
               />
             </View>
           </View>

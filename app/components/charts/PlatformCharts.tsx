@@ -8,7 +8,6 @@ import {
   BarChartProps,
   DonutChartProps,
   TimeSeriesChartProps,
-  AreaChartProps,
   ExpenseChartProps
 } from './ChartTypes';
 
@@ -17,7 +16,6 @@ import {
   GiftedBarChart,
   GiftedDonutChart,
   GiftedTimeSeriesChart,
-  GiftedAreaChart,
   GiftedExpenseChart
 } from './GiftedCharts';
 
@@ -26,7 +24,6 @@ import {
   WebBarChart,
   WebDonutChart,
   WebTimeSeriesChart,
-  WebAreaChart,
   WebExpenseChart
 } from './WebCharts';
 
@@ -51,13 +48,6 @@ export const TimeSeriesChartComponent: React.FC<TimeSeriesChartProps> = (props) 
     : <GiftedTimeSeriesChart {...props} />;
 };
 
-// ==================== Area Chart ====================
-export const AreaChartComponent: React.FC<AreaChartProps> = (props) => {
-  return Platform.OS === 'web'
-    ? <WebAreaChart {...props} />
-    : <GiftedAreaChart {...props} />;
-};
-
 // ==================== Expense Chart ====================
 export const PlatformExpenseChart: React.FC<ExpenseChartProps> = (props) => {
   return Platform.OS === 'web'
@@ -73,7 +63,6 @@ const PlatformCharts = {
   BarChartComponent,
   DonutChartComponent,
   TimeSeriesChartComponent,
-  AreaChartComponent,
   PlatformExpenseChart,
   ChartSelector: require('./ChartSelector').default
 };

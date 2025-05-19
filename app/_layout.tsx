@@ -1,13 +1,13 @@
-import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Platform } from 'react-native';
 import 'react-native-reanimated';
-import Toast from 'react-native-toast-message';
+import Toast, { BaseToast, ErrorToast, ToastConfig as ToastConfigType } from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { toastConfig } from './config/toastConfig';
 
 import AuthProvider from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -18,7 +18,7 @@ import BackgroundSMSListener from './components/BackgroundSMSListener';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const currentRoute = usePathname();
+  const currentRoute = usePathname() ?? '';
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -49,17 +49,13 @@ export default function RootLayout() {
 }
 
 // Separate component to use the theme context
-function AppContent({ currentRoute, shouldShowBottomNav, loaded }: { currentRoute: string | null, shouldShowBottomNav: boolean, loaded: boolean }) {
+function AppContent({ currentRoute, shouldShowBottomNav, loaded }: { currentRoute: string | undefined, shouldShowBottomNav: boolean, loaded: boolean }) {
   const { colors, isDark } = useTheme();
+  const [initialized, setInitialized] = useState<boolean>(false);
 
   if (!loaded) {
     return null;
   }
-
-  // Create navigation theme based on our theme
-  const navigationTheme = isDark
-    ? { ...NavigationDarkTheme, colors: { ...NavigationDarkTheme.colors } }
-    : { ...NavigationDefaultTheme, colors: { ...NavigationDefaultTheme.colors } };
 
   return (
     <>
@@ -84,7 +80,7 @@ function AppContent({ currentRoute, shouldShowBottomNav, loaded }: { currentRout
         </View>
         {shouldShowBottomNav && <BottomNavBar currentRoute={currentRoute} />}
         <StatusBar style={isDark ? "light" : "dark"} />
-        <Toast />
+        <Toast config={toastConfig} />
         {/* Only show SMS listener when user is authenticated and on Android */}
         {shouldShowBottomNav && Platform.OS === 'android' && <BackgroundSMSListener />}
       </View>

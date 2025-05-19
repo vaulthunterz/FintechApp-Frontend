@@ -8,6 +8,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
+import { showSuccessToast, showErrorToast } from '../utils/toastUtils';
 
 interface User {
   uid: string;  // Firebase UID
@@ -91,6 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
+      showSuccessToast('Login Successful', 'Welcome back!');
       router.replace('/');
     } catch (error) {
       console.error('Login error:', error);
@@ -132,9 +134,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       await signOut(auth);
+      showSuccessToast('Logged Out', 'You have been successfully logged out');
       router.replace('/screens/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Logout error:', error);
+      showErrorToast('Logout Failed', error.message || 'Failed to log out');
       throw error;
     } finally {
       setLoading(false);

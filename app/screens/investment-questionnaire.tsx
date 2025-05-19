@@ -184,7 +184,7 @@ const InvestmentQuestionnaire = () => {
     checkQuestionnaireStatus();
   }, [isPostSignup]);
 
-  const handleChange = (name: keyof FormData, value: string | boolean) => {
+  const handleChange = (name: keyof FormData, value: string | boolean | string[]) => {
     setFormData({
       ...formData,
       [name]: value
@@ -202,8 +202,26 @@ const InvestmentQuestionnaire = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Basic validation - check if required fields are filled
+      const requiredFields = ['annual_income_range', 'investment_timeframe', 'primary_goal', 'risk_comfort_scenario'];
+      const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+      
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields);
+        Toast.show({
+          type: 'error',
+          text1: 'Missing Information',
+          text2: 'Please fill in all required fields before submitting.'
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Submitting questionnaire with data:', formData);
+      
       // Submit questionnaire data using the API
       const response = await api.submitQuestionnaire(formData);
+      console.log('Questionnaire submission response:', response);
 
       // Check if we got a maintenance response
       if (response.status === 'maintenance') {
@@ -221,28 +239,33 @@ const InvestmentQuestionnaire = () => {
 
         // Force refresh of questionnaire status and profile data in the app
         try {
+          console.log('Refreshing questionnaire status and user profile data...');
           // This will update the status in the API cache
-          await Promise.all([
+          const [questionnaireStatus, userProfiles] = await Promise.all([
             api.checkQuestionnaireStatus(),
             api.fetchUserProfiles()
           ]);
 
-          console.log('Successfully refreshed profile and questionnaire data');
+          console.log('Refreshed data:', { questionnaireStatus, userProfiles });
         } catch (error) {
           console.error('Error refreshing profile data:', error);
           // Non-critical error, don't show to user
         }
       }
 
-      // Navigate based on context
-      if (isPostSignup) {
-        router.replace('/');
-      } else {
-        // Add a small delay to ensure data is refreshed before navigating back
-        setTimeout(() => {
-          router.back();
-        }, 500);
-      }
+      // Navigate to investment dashboard after successful submission
+      setTimeout(() => {
+        // Extract risk level and investment amount from form data
+        const riskLevel = formData.risk_comfort_scenario || 'medium';
+        const amountMatch = formData.monthly_investment?.match(/\d+/g);
+        const amount = amountMatch ? parseInt(amountMatch[0]) : 1000;
+        
+        // Navigate to investment dashboard with risk level and amount parameters
+        router.push({
+          pathname: '/screens/fixed-investment-dashboard',
+          params: { riskLevel, amount }
+        });
+      }, 500);
     } catch (error) {
       console.error('Error submitting questionnaire:', error);
       Toast.show({
@@ -275,11 +298,11 @@ const InvestmentQuestionnaire = () => {
               itemStyle={{ color: colors.text }}
             >
               <Picker.Item label="Select your income range" value="" color={colors.text} />
-              <Picker.Item label="Less than $30,000" value="0-30000" color={colors.text} />
-              <Picker.Item label="$30,000 - $50,000" value="30000-50000" color={colors.text} />
-              <Picker.Item label="$50,000 - $80,000" value="50000-80000" color={colors.text} />
-              <Picker.Item label="$80,000 - $120,000" value="80000-120000" color={colors.text} />
-              <Picker.Item label="More than $120,000" value="120000+" color={colors.text} />
+              <Picker.Item label="Less than KSH 3,000,000" value="0-30000" color={colors.text} />
+              <Picker.Item label="KSH 3M - KSH 5M" value="30000-50000" color={colors.text} />
+              <Picker.Item label="KSH 5M - KSH 8M" value="50000-80000" color={colors.text} />
+              <Picker.Item label="KSH 8M - KSH 12M" value="80000-120000" color={colors.text} />
+              <Picker.Item label="More than KSH 12M" value="120000+" color={colors.text} />
             </Picker>
           </View>
         </View>
@@ -296,11 +319,11 @@ const InvestmentQuestionnaire = () => {
               itemStyle={{ color: colors.text }}
             >
               <Picker.Item label="Select your monthly savings" value="" color={colors.text} />
-              <Picker.Item label="Less than $200" value="0-200" color={colors.text} />
-              <Picker.Item label="$200 - $500" value="200-500" color={colors.text} />
-              <Picker.Item label="$500 - $1,000" value="500-1000" color={colors.text} />
-              <Picker.Item label="$1,000 - $2,000" value="1000-2000" color={colors.text} />
-              <Picker.Item label="More than $2,000" value="2000+" color={colors.text} />
+              <Picker.Item label="Less than KSH 20,000" value="0-200" color={colors.text} />
+              <Picker.Item label="KSH 20K - KSH 50K" value="200-500" color={colors.text} />
+              <Picker.Item label="KSH 50K - KSH 100K" value="500-1000" color={colors.text} />
+              <Picker.Item label="KSH 100K - KSH 200K" value="1000-2000" color={colors.text} />
+              <Picker.Item label="More than KSH 200K" value="2000+" color={colors.text} />
             </Picker>
           </View>
         </View>
@@ -411,11 +434,11 @@ const InvestmentQuestionnaire = () => {
               itemStyle={{ color: 'white' }}
             >
               <Picker.Item label="Select monthly investment amount" value="" color="white" />
-              <Picker.Item label="Less than $100" value="0-100" />
-              <Picker.Item label="$100 - $300" value="100-300" />
-              <Picker.Item label="$300 - $500" value="300-500" />
-              <Picker.Item label="$500 - $1,000" value="500-1000" />
-              <Picker.Item label="More than $1,000" value="1000+" />
+              <Picker.Item label="Less than KSH 10,000" value="0-100" />
+              <Picker.Item label="KSH 10K - KSH 30K" value="100-300" />
+              <Picker.Item label="KSH 30K - KSH 50K" value="300-500" />
+              <Picker.Item label="KSH 50K - KSH 100K" value="500-1000" />
+              <Picker.Item label="More than KSH 100K" value="1000+" />
             </Picker>
           </View>
         </View>
@@ -605,7 +628,11 @@ const InvestmentQuestionnaire = () => {
                 <View style={[
                   styles.checkbox,
                   formData.previous_investments.includes(item.value) && styles.checkboxSelected
-                ]} />
+                ]}>
+                  {formData.previous_investments.includes(item.value) && (
+                    <Text style={[styles.checkmark, dynamicStyles.checkmark]}>✓</Text>
+                  )}
+                </View>
                 <Text style={styles.checkboxLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -654,7 +681,11 @@ const InvestmentQuestionnaire = () => {
                 <View style={[
                   styles.checkbox,
                   formData.preferred_investment_types.includes(item.value) && styles.checkboxSelected
-                ]} />
+                ]}>
+                  {formData.preferred_investment_types.includes(item.value) && (
+                    <Text style={[styles.checkmark, dynamicStyles.checkmark]}>✓</Text>
+                  )}
+                </View>
                 <Text style={styles.checkboxLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -697,7 +728,11 @@ const InvestmentQuestionnaire = () => {
                 <View style={[
                   styles.checkbox,
                   formData.ethical_preferences.includes(item.value) && styles.checkboxSelected
-                ]} />
+                ]}>
+                  {formData.ethical_preferences.includes(item.value) && (
+                    <Text style={[styles.checkmark, dynamicStyles.checkmark]}>✓</Text>
+                  )}
+                </View>
                 <Text style={styles.checkboxLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -741,7 +776,11 @@ const InvestmentQuestionnaire = () => {
                 <View style={[
                   styles.checkbox,
                   formData.sector_preferences.includes(item.value) && styles.checkboxSelected
-                ]} />
+                ]}>
+                  {formData.sector_preferences.includes(item.value) && (
+                    <Text style={[styles.checkmark, dynamicStyles.checkmark]}>✓</Text>
+                  )}
+                </View>
                 <Text style={styles.checkboxLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -833,7 +872,11 @@ const InvestmentQuestionnaire = () => {
                 <View style={[
                   styles.checkbox,
                   formData.major_expenses_planned.includes(item.value) && styles.checkboxSelected
-                ]} />
+                ]}>
+                  {formData.major_expenses_planned.includes(item.value) && (
+                    <Text style={[styles.checkmark, dynamicStyles.checkmark]}>✓</Text>
+                  )}
+                </View>
                 <Text style={styles.checkboxLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -919,7 +962,10 @@ const InvestmentQuestionnaire = () => {
       borderColor: colors.primary,
     },
     checkboxLabel: {
-      color: 'white',
+      color: colors.text,
+    },
+    checkmark: {
+      color: colors.headerText,
     },
   };
 
@@ -1144,6 +1190,11 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     flex: 1,
+  },
+  checkmark: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 
