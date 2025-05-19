@@ -33,20 +33,11 @@ interface UserProfileData {
 interface Recommendation {
   id: string;
   name: string;
-  type: string;
-  risk_level: string;
-  expected_return: string;
-  time_horizon: string;
-  description: string;
-  gemini_analysis?: string;
-  allocation_percentage?: number;
-  asset_class?: string;
-  min_investment?: number;
-  returns?: string;
-  allocation: {
-    [key: string]: number;
-  };
-  analysis?: string;
+  risk_level: number;
+  expected_return: number;
+  minimum_investment: number;
+  fund_manager: string;
+  description?: string;
 }
 
 const InvestmentRecommendationsScreen = () => {
@@ -59,6 +50,8 @@ const InvestmentRecommendationsScreen = () => {
   const itemsPerPage = 5; // Show 5 recommendations per page
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
+  const [selectedFundDetails, setSelectedFundDetails] = useState<any>(null); // Add this line
+  const [fundDetailsLoading, setFundDetailsLoading] = useState(false); // Add this line
 
   // Calculate paginated recommendations
   const paginatedRecommendations = useMemo(() => {
@@ -468,26 +461,52 @@ const InvestmentRecommendationsScreen = () => {
   };
 
   const fetchAndShowFundDetails = async (recommendation: Recommendation) => {
+    if (!recommendation) return;
+    
     setFundDetailsLoading(true);
     setSelectedRecommendation(recommendation);
     setSelectedFundDetails(null);
+    
     try {
       let fundId = recommendation.id;
-      // If id is not a number, search for fund by name
-      if (!/^[0-9]+$/.test(fundId) && recommendation.name) {
-        const res = await api.get(`/investment/market-funds/?search=${encodeURIComponent(recommendation.name)}`);
-        if (res.data && res.data.length > 0) {
-          fundId = res.data[0].id;
-        } else {
-          setFundDetailsLoading(false);
-          Toast.show({ type: 'error', text1: 'Not found', text2: 'No fund found with this name.' });
-          return;
+      let fundDetails;
+      
+      // If no direct fund ID, try to find by name
+      if (!fundId && recommendation.name) {
+        console.log('Searching for fund by name:', recommendation.name);
+        const searchResponse = await api.searchMarketFunds(recommendation.name);
+        
+        if (searchResponse?.data?.results?.length > 0) {
+          fundId = searchResponse.data.results[0].id;
         }
       }
-      const details = await api.getMarketFundDetails(fundId);
-      setSelectedFundDetails(details);
-    } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load fund details' });
+
+      // If we have a fund ID, get the details
+      if (fundId) {
+        console.log('Fetching fund details for ID:', fundId);
+        const response = await api.getMarketFundDetails(fundId);
+        fundDetails = response.data;
+      }
+
+      if (!fundDetails) {
+        throw new Error('Could not find fund details');
+      }
+
+      console.log('Fund details loaded:', fundDetails);
+      setSelectedFundDetails(fundDetails);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Fund details loaded successfully'
+      });
+    } catch (error) {
+      console.error('Error fetching fund details:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch fund details';
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: errorMessage
+      });
       setSelectedFundDetails(null);
     } finally {
       setFundDetailsLoading(false);
@@ -1132,6 +1151,49 @@ const styles = StyleSheet.create({
   resultValue: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  detailsSection: {
+    marginVertical: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  detailsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  detailsText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  detailsGridItem: {
+    width: '50%',
+    paddingHorizontal: 8,
+    marginBottom: 12,
+  },
+  websiteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  websiteButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    marginTop: 16,
   },
 });
 

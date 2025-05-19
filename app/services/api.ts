@@ -9,16 +9,25 @@ import { Platform } from 'react-native';
 // Import shared API utilities
 import { API_BASE_URL, getToken } from './apiUtils';
 
-// Market Fund type
+// Market Fund interfaces and API functions
 export interface MarketFund {
-  id: string;
+  id: number | string;
   name: string;
-  fundType: string;
-  fundManager: string;
-  rateOfReturn: number;
-  riskLevel: 'Low' | 'Medium' | 'High';
-  minimumInvestment: number;
+  fund_type: string;
+  fund_type_display: string;
   description: string;
+  rate_of_return: number;
+  risk_level: string;
+  risk_level_display: string;
+  minimum_investment: number;
+  investment_horizon: string;
+  investment_horizon_display: string;
+  fund_manager: string;
+  total_assets?: number;
+  management_fee: number;
+  inception_date?: string;
+  website_url?: string;
+  is_active: boolean;
 }
 
 // Import AI service functions - using a function to avoid circular dependency
@@ -497,7 +506,6 @@ export const deleteSubcategory = async (subcategoryId: string) => {
 };
 
 
-
 // AI-related functions now use the centralized AI service (aiService.ts)
 export const getGeminiPrediction = async (description: string) => {
   const aiService = getAIService();
@@ -706,13 +714,13 @@ export const getInvestmentRecommendations = async (amount: number, riskLevel: st
     // Add pagination parameters to the request
     const params = new URLSearchParams({
       amount: amount.toString(),
-      risk_level: riskLevel,
+      risk_level: riskLevel.toLowerCase(), // Convert to lowercase to match backend expectations
       page: page.toString(),
       page_size: pageSize.toString()
     });
     
-    // Make the API request with pagination parameters
-    const response = await apiRequest('get', `/api/investment/recommendations/by-risk-level/?${params.toString()}`);
+    // Use the correct API endpoint path based on backend routes
+    const response = await apiRequest('get', `/api/investment/v1/recommendations/by-risk-level/?${params.toString()}`);
     
     console.log('Investment recommendations response:', response);
     return response;
@@ -964,6 +972,30 @@ export const changePassword = async (data: ChangePasswordData) => {
   }
 };
 
+// Market Funds API functions
+export const fetchMarketFunds = async (params?: {
+  risk_level?: string;
+  horizon?: string;
+  search?: string;
+}) => {
+  const queryString = params
+    ? Object.entries(params)
+        .filter(([_, value]) => value)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+        .join('&')
+    : '';
+  
+  return apiRequest('get', `/api/v2/market-funds/${queryString ? `?${queryString}` : ''}`);
+};
+
+export const getMarketFundDetails = async (fundId: string) => {
+  return apiRequest('get', `/api/v2/market-funds/${fundId}/`);
+};
+
+export const searchMarketFunds = async (query: string) => {
+  return apiRequest('get', `/api/investment/market-funds/search/?query=${encodeURIComponent(query)}`);
+};
+
 // Create an object with all API functions
 const api = {
   fetchTransactions,
@@ -1009,19 +1041,9 @@ const api = {
   checkQuestionnaireStatus,
   changePassword,
   // Market Funds
-  async fetchMarketFunds(): Promise<MarketFund[]> {
-    try {
-      const response = await apiRequest('GET', '/api/investments/market-funds/');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching market funds:', error);
-      throw error;
-    }
-  },
-  // Fetch market fund details by ID
-  getMarketFundDetails: async (fundId: string) => {
-    return apiRequest('get', `/api/investment/marketfunds/${fundId}/`);
-  },
+  fetchMarketFunds,
+  getMarketFundDetails,
+  searchMarketFunds,
 };
 
 // Export the API object as default

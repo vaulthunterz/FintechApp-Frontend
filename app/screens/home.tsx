@@ -328,15 +328,15 @@ const HomeScreen = () => {
     setDrawerVisible(!drawerVisible);
   };
 
-  const renderTransactionItem = ({ item }: { item: Transaction }) => {
-    const formatDate = (dateString: string | undefined) => {
+  const renderTransactionItem = ({ item }: { item: Transaction }) => {    const formatDate = (dateString: string | undefined) => {
       if (!dateString) return "No date";
       try {
         const date = new Date(dateString);
         if (isNaN(date.getTime())) {
           return "No date";
         }
-        return format(date, 'MMM dd, yyyy');
+        // Parse the date string and format it with time
+        return format(date, 'MMM dd, yyyy hh:mm a');
       } catch (e) {
         console.error("Invalid date format:", dateString);
         return "No date";
@@ -362,9 +362,8 @@ const HomeScreen = () => {
             </Text>
           <Text style={[styles.transactionCategory, { color: colors.textSecondary }]}>
               {typeof item.category === 'string' ? item.category : item.category?.name}
-          </Text>
-          <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
-              {formatDate(item.time_of_transaction)}
+          </Text>          <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
+              {formatDate(item.time_of_transaction || item.date)}
             </Text>
           </View>
           <View style={styles.transactionRight}>

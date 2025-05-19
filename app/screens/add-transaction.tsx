@@ -517,7 +517,7 @@ const AddTransactionScreen = () => {
         <Text style={styles.title}>Add New Transaction</Text>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Merchant Name (Optional)</Text>
+          <Text style={styles.label}>Merchant Name</Text>
           <TextInput
             style={styles.input}
             value={merchantName}

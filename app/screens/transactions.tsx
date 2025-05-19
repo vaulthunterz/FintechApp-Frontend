@@ -231,7 +231,7 @@ const TransactionsScreen = () => {
         if (isNaN(date.getTime())) {
           return "No date";
         }
-        return format(date, 'MMM dd, yyyy');
+        return format(date, 'MMM dd, yyyy hh:mm a');
       } catch (e) {
         console.error("Invalid date format:", dateString);
         return "No date";
@@ -252,7 +252,7 @@ const TransactionsScreen = () => {
             {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
           </Text>
           <Text style={[styles.transactionDate, dynamicStyles.transactionDate]}>
-            {formatDate(item.date || item.time_of_transaction)}
+            {formatDate(item.time_of_transaction || item.date)}
           </Text>
         </View>
         <Text
